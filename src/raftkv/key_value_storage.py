@@ -106,7 +106,7 @@ class KeyValueStorage(MutableMapping[str, Any]):
 
         :return: an iterator over the keys in KeyValueStorage.
         """
-        for key in self._data:
+        for key in self._data.keys():
             yield key.decode()
 
     def __setitem__(self, key: str, value: Any) -> None:

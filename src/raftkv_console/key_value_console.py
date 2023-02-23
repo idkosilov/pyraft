@@ -51,7 +51,7 @@ class RaftKeyValueStorageShell(cmd.Cmd):
             else:
                 print("Key not found")
 
-    def do_list(self):
+    def do_list(self, _):
         """
         List all keys in the store.
 
@@ -62,7 +62,7 @@ class RaftKeyValueStorageShell(cmd.Cmd):
                 print(key)
 
     @staticmethod
-    def do_quit():
+    def do_quit(_):
         """
         Quit the shell.
 
