@@ -9,15 +9,9 @@ def main():
     parser.add_argument('--db', dest='db_file', required=True,
                         help='Path to the database file')
 
-    parser.add_argument('--address', dest='address', required=True,
-                        help='Address to bind to')
-
-    parser.add_argument('--cluster', dest='cluster', required=True, nargs='+',
-                        help='List of addresses of nodes in the cluster')
-
     args = parser.parse_args()
 
-    shell = RaftKeyValueStorageShell(db_file=args.db_file, address=args.address, cluster=args.cluster)
+    shell = RaftKeyValueStorageShell(db_file=args.db_file)
     shell.cmdloop()
 
 
