@@ -22,6 +22,7 @@ class KeyValueStorage(MutableMapping[str, Any]):
         :param write_back: whether to cache data in memory and write it back to the database when
                            the storage object is closed or when the `sync()` method is called.
         """
+        self._data = None
         self._filename = filename
         self._write_back = write_back
         self._cache = {}
@@ -30,21 +31,31 @@ class KeyValueStorage(MutableMapping[str, Any]):
         """
         Enter a context to use the key-value storage.
 
-        This method opens the dbm database and returns the storage object.
-
         :return: the key-value storage object.
         """
-        import dbm
-
-        self._data = dbm.open(self._filename, "c")
+        self.open()
         return self
 
     def __exit__(self, exc_type: type[Exception], exc_val: Exception, exc_tb) -> None:
         """
         Exit the context used to use the key-value storage.
 
+        """
+        self.close()
+
+    def open(self) -> None:
+        """
+        This method opens the dbm database and returns the storage object.
+        """
+        import dbm
+
+        self._data = dbm.open(self._filename, "c")
+
+    def close(self) -> None:
+        """
         This method closes the dbm database.
         """
+
         self.sync()
         self._data.close()
 
