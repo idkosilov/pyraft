@@ -110,7 +110,7 @@ class KeyValueStorage(MutableMapping[str, Any]):
         :return: an iterator over the keys in KeyValueStorage.
         """
         for key in self._data.keys():
-            decoded_key = key.decode
+            decoded_key = key.decode()
             if decoded_key not in _HIDDEN_KEYS:
                 yield decoded_key
 
