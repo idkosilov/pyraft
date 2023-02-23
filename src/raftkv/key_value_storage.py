@@ -6,6 +6,9 @@ from collections.abc import MutableMapping
 from typing import Iterator, Any
 
 
+_HIDDEN_KEYS = {"__current_term__", "__voted_for__", "__log__", "__commit_length__"}
+
+
 class KeyValueStorage(MutableMapping[str, Any]):
     """
     A key-value storage that uses the dbm module to persist data.
@@ -107,7 +110,9 @@ class KeyValueStorage(MutableMapping[str, Any]):
         :return: an iterator over the keys in KeyValueStorage.
         """
         for key in self._data.keys():
-            yield key.decode()
+            decoded_key = key.decode
+            if decoded_key not in _HIDDEN_KEYS:
+                yield decoded_key
 
     def __setitem__(self, key: str, value: Any) -> None:
         """

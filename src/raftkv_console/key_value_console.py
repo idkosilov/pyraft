@@ -1,7 +1,9 @@
 import cmd
 from os import PathLike
 
+from raftkv import commands
 from raftkv.key_value_storage import KeyValueStorage
+from raftkv.node import Node
 
 
 class RaftKeyValueStorageShell(cmd.Cmd):
@@ -10,9 +12,8 @@ class RaftKeyValueStorageShell(cmd.Cmd):
 
     def __init__(self, address: str, cluster: list[str], db_file: str | PathLike) -> None:
         super().__init__()
-        self.address = address
-        self.cluster = cluster
         self.db = KeyValueStorage(db_file)
+        self.node = Node(self.db, address, cluster)
 
     def do_set(self, arg: str) -> None:
         """
@@ -22,8 +23,7 @@ class RaftKeyValueStorageShell(cmd.Cmd):
         """
         key, value = arg.split()
 
-        with self.db:
-            self.db[key] = value
+        self.node.handle_command(commands.Set(key, value))
 
     def do_get(self, arg):
         """
@@ -45,11 +45,10 @@ class RaftKeyValueStorageShell(cmd.Cmd):
 
         Usage: delete <key>
         """
-        with self.db:
-            if arg in self.db:
-                del self.db[arg]
-            else:
-                print("Key not found")
+        try:
+            self.node.handle_command(commands.Delete(arg))
+        except KeyError:
+            print("Key not found")
 
     def do_list(self, _):
         """
