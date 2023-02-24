@@ -27,13 +27,13 @@ class KeyValueStorage(MutableMapping[str, Any]):
         self._write_back = write_back
         self._cache = {}
 
-    def __enter__(self) -> KeyValueStorage:
+    def __enter__(self, mode: str = "c") -> KeyValueStorage:
         """
         Enter a context to use the key-value storage.
 
         :return: the key-value storage object.
         """
-        self.open()
+        self.open(mode)
         return self
 
     def __exit__(self, exc_type: type[Exception], exc_val: Exception, exc_tb) -> None:
@@ -43,13 +43,13 @@ class KeyValueStorage(MutableMapping[str, Any]):
         """
         self.close()
 
-    def open(self) -> None:
+    def open(self, mode: str = "c") -> None:
         """
         This method opens the dbm database and returns the storage object.
         """
         import dbm
 
-        self._data = dbm.open(self._filename, "c")
+        self._data = dbm.open(self._filename, mode)
 
     def close(self) -> None:
         """
