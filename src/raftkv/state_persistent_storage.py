@@ -10,54 +10,109 @@ from raftkv.key_value_storage import KeyValueStorage
 
 @dataclass
 class Entry:
+    """
+    Class representing a log entry with a term and a message.
+    """
     term: int
     message: Any
 
 
 class StatePersistentStorage(ABC):
+    """
+    Abstract class representing the persistent state of a Raft node.
+
+    Subclasses of this class should implement methods to handle read and write
+    operations for each persistent field.
+    """
 
     @property
     @abstractmethod
     def current_term(self) -> int:
+        """
+        The latest term the node has seen.
+
+        :return: The latest term seen by the node.
+        """
         ...
 
     @current_term.setter
     @abstractmethod
     def current_term(self, term: int) -> None:
+        """
+        Set the current term to the given value.
+
+        :param term: The value to set as the current term.
+        """
         ...
 
     @property
     @abstractmethod
     def voted_for(self) -> Optional[int]:
+        """
+        The ID of the candidate the node voted for in its current term.
+
+        :return: The ID of the candidate voted for in the current term, or None if the node hasn't voted yet.
+        """
         ...
 
     @voted_for.setter
     @abstractmethod
     def voted_for(self, leader_id: int) -> None:
+        """
+        Set the ID of the candidate the node voted for in its current term.
+
+        :param leader_id: The ID of the candidate to vote for.
+        """
         ...
 
     @property
     @abstractmethod
     def log(self) -> list[Entry]:
+        """
+        The list of log entries.
+
+        :return: The list of log entries.
+        """
         ...
 
     @log.setter
     @abstractmethod
     def log(self, log: list[Entry]) -> None:
+        """
+        Set the list of log entries.
+
+        :param log: The new list of log entries.
+        """
         ...
 
     @property
     @abstractmethod
     def commit_length(self) -> int:
+        """
+        The index of the highest log entry known to be committed.
+
+        :return: The index of the highest committed log entry.
+        """
         ...
 
     @commit_length.setter
     @abstractmethod
     def commit_length(self, commit_length: int) -> None:
+        """
+        Set the index of the highest log entry known to be committed.
+
+        :param commit_length: The new value for the commit length.
+        """
         ...
 
 
 class TrackedList(UserList):
+    """
+    A list that tracks updates and notifies a callback function.
+
+    This class is a subclass of UserList that notifies a callback function
+    whenever the list is modified.
+    """
 
     def __init__(self, initlist=None):
         super().__init__(initlist)
@@ -116,13 +171,29 @@ class TrackedList(UserList):
 
 
 class StateKeyValueStorage(StatePersistentStorage):
+    """
+    A class that implements the StatePersistentStorage interface using a key-value storage.
+
+    :param path_to_storage: The path to the file where the key-value storage is persisted.
+    """
     def __init__(self, path_to_storage: str | PathLike) -> None:
+        """
+        Initializes a new instance of the StateKeyValueStorage class.
+
+        :param path_to_storage: The path to the file where the key-value storage is persisted.
+        """
         self._storage = KeyValueStorage(path_to_storage, write_back=True)
 
     def open(self) -> None:
+        """
+        Opens the key-value storage.
+        """
         self._storage.open()
 
     def close(self) -> None:
+        """
+        Closes the key-value storage.
+        """
         self._storage.close()
 
     @property
