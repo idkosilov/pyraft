@@ -11,7 +11,7 @@ def test_initial_values(state_storage, request):
     assert state_storage.current_term == 0
     assert state_storage.voted_for is None
     assert state_storage.log == []
-    assert state_storage.commit_length == 0
+    assert state_storage.commit_index == 0
 
 
 @pytest.mark.parametrize("state_storage", [
@@ -84,7 +84,7 @@ def test_can_update_log(state_storage, request):
 ])
 def test_can_retrieve_commit_length(state_storage, request):
     state_storage = request.getfixturevalue(state_storage)
-    assert state_storage.commit_length == 2
+    assert state_storage.commit_index == 2
 
 
 @pytest.mark.parametrize("state_storage", [
@@ -92,5 +92,5 @@ def test_can_retrieve_commit_length(state_storage, request):
 ])
 def test_can_set_commit_length(state_storage, request):
     state_storage = request.getfixturevalue(state_storage)
-    state_storage.commit_length += 1
-    assert state_storage.commit_length == 3
+    state_storage.commit_index += 1
+    assert state_storage.commit_index == 3
