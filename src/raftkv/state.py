@@ -134,7 +134,7 @@ class AbstractState(ABC):
         ...
 
     @property
-    def last_term(self) -> int:
+    def last_log_term(self) -> int:
         if len(self.log) > 0:
             return self.log[-1].term
         else:
