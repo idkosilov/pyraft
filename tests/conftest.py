@@ -2,12 +2,12 @@ import os
 
 import pytest
 
-from raftkv.state_persistent_storage import StateKeyValueStorage, Entry
+from raftkv.state import State, Entry
 
 
 @pytest.fixture
 def key_value_state_storage_initial():
-    storage = StateKeyValueStorage("test")
+    storage = State("test")
     storage.open()
     yield storage
     storage.close()
@@ -23,4 +23,3 @@ def key_value_state_storage_predefined(key_value_state_storage_initial):
     key_value_state_storage_initial.close()
     key_value_state_storage_initial.open()
     yield key_value_state_storage_initial
-

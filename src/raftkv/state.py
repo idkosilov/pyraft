@@ -1,3 +1,4 @@
+import enum
 from abc import ABC, abstractmethod
 from collections import UserList
 from dataclasses import dataclass
@@ -6,6 +7,12 @@ from os import PathLike
 from typing import Any, Optional, Callable
 
 from raftkv.key_value_storage import KeyValueStorage
+
+
+class Role(enum.Enum):
+    FOLLOWER = 1
+    CANDIDATE = 2
+    LEADER = 3
 
 
 @dataclass
@@ -17,13 +24,20 @@ class Entry:
     message: Any
 
 
-class StatePersistentStorage(ABC):
+class AbstractState(ABC):
     """
     Abstract class representing the persistent state of a Raft node.
 
     Subclasses of this class should implement methods to handle read and write
     operations for each persistent field.
     """
+
+    def __init__(self) -> None:
+        self.current_role = Role.FOLLOWER
+        self.current_leader: Optional[int] = None
+        self.votes_received: set[int] = set()
+        self.sent_length: dict[int, int] = {}
+        self.acked_length: dict[int, int] = {}
 
     @property
     @abstractmethod
@@ -105,6 +119,13 @@ class StatePersistentStorage(ABC):
         """
         ...
 
+    @property
+    def last_term(self) -> int:
+        if len(self.log) > 0:
+            return self.log[-1].term
+        else:
+            return 0
+
 
 class TrackedList(UserList):
     """
@@ -170,18 +191,20 @@ class TrackedList(UserList):
         self.on_update(self.data)
 
 
-class StateKeyValueStorage(StatePersistentStorage):
+class State(AbstractState):
     """
     A class that implements the StatePersistentStorage interface using a key-value storage.
 
     :param path_to_storage: The path to the file where the key-value storage is persisted.
     """
+
     def __init__(self, path_to_storage: str | PathLike) -> None:
         """
         Initializes a new instance of the StateKeyValueStorage class.
 
         :param path_to_storage: The path to the file where the key-value storage is persisted.
         """
+        super().__init__()
         self._storage = KeyValueStorage(path_to_storage, write_back=True)
 
     def open(self) -> None:
