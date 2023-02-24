@@ -33,10 +33,24 @@ class AbstractState(ABC):
     """
 
     def __init__(self) -> None:
+        """
+        Initializes an instance of the AbstractState class.
+        """
+        # The current role of the Raft node.
         self.current_role = Role.FOLLOWER
+
+        # The ID of the current leader Raft node or None if there is no leader.
         self.current_leader: Optional[int] = None
+
+        # The set of IDs of Raft nodes that have voted for the current Raft node.
         self.votes_received: set[int] = set()
+
+        # A dictionary where the keys are the IDs of Raft nodes and the values are the
+        # number of log entries that have been sent to those Raft nodes.
         self.sent_length: dict[int, int] = {}
+
+        # A dictionary where the keys are the IDs of Raft nodes and the values are the
+        # number of log entries that have been acknowledged by those Raft nodes.
         self.acked_length: dict[int, int] = {}
 
     @property
