@@ -140,6 +140,13 @@ class AbstractState(ABC):
         else:
             return 0
 
+    @property
+    def last_log_index(self) -> int:
+        if len(self.log) > 0:
+            return len(self.log) - 1
+        else:
+            return 0
+
 
 class TrackedList(UserList):
     """
