@@ -40,7 +40,7 @@ def node():
     state.current_role = Role.FOLLOWER
     state.current_leader = None
     state.votes_received = set()
-    state.send_length = {}
-    state.acked_length = {}
+    state.next_index = {}
+    state.match_index = {}
 
     return Node(node_id, nodes, state)
