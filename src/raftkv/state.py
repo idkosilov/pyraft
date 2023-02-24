@@ -46,12 +46,12 @@ class AbstractState(ABC):
         self.votes_received: set[int] = set()
 
         # A dictionary where the keys are the IDs of Raft nodes and the values are the
-        # number of log entries that have been sent to those Raft nodes.
-        self.sent_length: dict[int, int] = {}
+        # index of the next entry to send to those Raft nodes.
+        self.next_index: dict[int, int] = {}
 
         # A dictionary where the keys are the IDs of Raft nodes and the values are the
-        # number of log entries that have been acknowledged by those Raft nodes.
-        self.acked_length: dict[int, int] = {}
+        # index of the highest log entry known to be replicated to those Raft nodes.
+        self.match_index: dict[int, int] = {}
 
     @property
     @abstractmethod
@@ -115,7 +115,7 @@ class AbstractState(ABC):
 
     @property
     @abstractmethod
-    def commit_length(self) -> int:
+    def commit_index(self) -> int:
         """
         The index of the highest log entry known to be committed.
 
@@ -123,13 +123,13 @@ class AbstractState(ABC):
         """
         ...
 
-    @commit_length.setter
+    @commit_index.setter
     @abstractmethod
-    def commit_length(self, commit_length: int) -> None:
+    def commit_index(self, commit_index: int) -> None:
         """
         Set the index of the highest log entry known to be committed.
 
-        :param commit_length: The new value for the commit length.
+        :param commit_index: The new value for the commit length.
         """
         ...
 
@@ -261,9 +261,9 @@ class State(AbstractState):
         self._storage["log"] = entries
 
     @property
-    def commit_length(self) -> int:
-        return self._storage.get("commit_length", 0)
+    def commit_index(self) -> int:
+        return self._storage.get("commit_index", 0)
 
-    @commit_length.setter
-    def commit_length(self, commit_length: int) -> None:
-        self._storage["commit_length"] = commit_length
+    @commit_index.setter
+    def commit_index(self, commit_index: int) -> None:
+        self._storage["commit_index"] = commit_index
