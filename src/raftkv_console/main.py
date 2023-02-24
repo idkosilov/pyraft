@@ -12,7 +12,12 @@ def main():
     args = parser.parse_args()
 
     shell = RaftKeyValueStorageShell(db_file=args.db_file)
-    shell.cmdloop()
+
+    try:
+        shell.cmdloop()
+    except Exception as err:
+        print(err)
+        shell.do_quit()
 
 
 if __name__ == "__main__":
