@@ -51,6 +51,7 @@ def test_can_retrieve_log(state_storage, request):
 def test_can_set_log(state_storage, request):
     state_storage = request.getfixturevalue(state_storage)
     state_storage.log = [Entry(1, "set x 33"), Entry(1, "delete y")]
+
     assert state_storage.log == [Entry(1, "set x 33"), Entry(1, "delete y")]
 
 
@@ -78,7 +79,7 @@ def test_can_retrieve_commit_length(state_storage, request):
 @pytest.mark.parametrize("state_storage", [
     "key_value_state_storage"
 ])
-def test_can_set_commit_index(state_storage, request):
+def test_can_set_commit_length(state_storage, request):
     state_storage = request.getfixturevalue(state_storage)
     state_storage.commit_length += 1
     assert state_storage.commit_length == 3
