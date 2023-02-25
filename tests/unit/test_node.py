@@ -507,3 +507,69 @@ def test_on_append_entries_request_appends_entries_if_previous_log_index_and_ter
                                                                                 node_id=1,
                                                                                 last_log_index=node.state.last_log_index,
                                                                                 success=True))
+
+
+def test_on_append_entries_response_on_follower(node):
+    node.state.current_role = Role.FOLLOWER
+    node.state.current_term = 1
+    node.cancel_election_timer_callback = MagicMock()
+    node.commit_log_entries = MagicMock()
+    node.replicate_log = MagicMock()
+    append_entries_response = AppendEntriesResponse(term=1, node_id=1, success=True, last_log_index=0)
+    node.on_append_entries_response(append_entries_response)
+
+    assert node.cancel_election_timer_callback.call_count == 0
+    assert node.commit_log_entries.call_count == 0
+    assert node.replicate_log.call_count == 0
+
+
+def test_on_append_entries_response_on_leader_with_lower_term(node):
+    node.state.current_role = Role.LEADER
+    node.state.current_term = 1
+    node.cancel_election_timer_callback = MagicMock()
+    node.commit_log_entries = MagicMock()
+    node.replicate_log = MagicMock()
+    append_entries_response = AppendEntriesResponse(term=2, node_id=1, success=False)
+    node.on_append_entries_response(append_entries_response)
+
+    assert node.cancel_election_timer_callback.call_count == 1
+    assert node.state.current_term == 2
+    assert node.state.current_role == Role.FOLLOWER
+    assert node.state.voted_for is None
+
+
+def test_on_append_entries_response_on_leader_with_term_ok_and_success(node):
+    node.state.current_role = Role.LEADER
+    node.state.current_term = 1
+    node.state.match_index = {2: 0}
+    node.state.next_index = {2: 0}
+    node.cancel_election_timer_callback = MagicMock()
+    node.commit_log_entries = MagicMock()
+    node.replicate_log = MagicMock()
+    append_entries_response = AppendEntriesResponse(term=1, node_id=2, success=True, last_log_index=3)
+    node.on_append_entries_response(append_entries_response)
+
+    assert node.state.current_term == 1
+    assert node.state.current_role == Role.LEADER
+    assert node.state.match_index[2] == append_entries_response.last_log_index
+    assert node.state.next_index[2] == append_entries_response.last_log_index + 1
+    assert node.commit_log_entries.call_count == 1
+
+
+def test_on_append_entries_response_on_leader_with_term_ok_and_not_success(node):
+    node.state.current_role = Role.LEADER
+    node.state.current_term = 1
+    node.state.match_index = {2: 0}
+    node.state.next_index = {2: 2}
+    node.cancel_election_timer_callback = MagicMock()
+    node.commit_log_entries = MagicMock()
+    node.replicate_log = MagicMock()
+    append_entries_response = AppendEntriesResponse(term=1, node_id=2, success=False, last_log_index=3)
+    node.on_append_entries_response(append_entries_response)
+
+    assert node.state.current_term == 1
+    assert node.state.current_role == Role.LEADER
+    assert node.state.next_index[2] == 1
+    node.replicate_log.assert_called_once_with(2)
+
+
