@@ -138,7 +138,7 @@ class Node:
         entries = self.state.log[previous_log_index + 1:]
 
         previous_log_term = 0
-        if previous_log_index > 0:
+        if previous_log_index > -1:
             previous_log_term = self.state.log[previous_log_index].term
 
         message = AppendEntriesRequest(term=self.state.current_term,
