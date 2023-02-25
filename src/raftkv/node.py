@@ -129,6 +129,12 @@ class Node:
                 self.replicate_log(follower_id)
 
     def on_append_entries_request(self, append_entries_request: AppendEntriesRequest) -> None:
+        """
+        Handles a received append entries request from another node.
+
+        :param append_entries_request: the append entries request received from another node.
+        """
+
         if append_entries_request.term > self.state.current_term:
             self.state.current_term = append_entries_request.term
             self.state.voted_for = None
