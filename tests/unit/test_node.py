@@ -503,10 +503,11 @@ def test_on_append_entries_request_appends_entries_if_previous_log_index_and_ter
                                                 append_entries_request.leader_commit,
                                                 append_entries_request.entries)
 
-    node.send_message_callback.assert_called_once_with(2, AppendEntriesResponse(term=1,
-                                                                                node_id=1,
-                                                                                last_log_index=node.state.last_log_index,
-                                                                                success=True))
+    node.send_message_callback.assert_called_once_with(2,
+                                                       AppendEntriesResponse(term=1,
+                                                                             node_id=1,
+                                                                             last_log_index=node.state.last_log_index,
+                                                                             success=True))
 
 
 def test_on_append_entries_response_on_follower(node):
@@ -571,5 +572,3 @@ def test_on_append_entries_response_on_leader_with_term_ok_and_not_success(node)
     assert node.state.current_role == Role.LEADER
     assert node.state.next_index[2] == 1
     node.replicate_log.assert_called_once_with(2)
-
-

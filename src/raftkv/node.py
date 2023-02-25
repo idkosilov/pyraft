@@ -164,6 +164,30 @@ class Node:
 
         self.send_message_callback(append_entries_request.leader_id, message)
 
+    def on_append_entries_response(self, append_entries_response: AppendEntriesResponse) -> None:
+        """
+        Handles a received AppendEntriesResponse from a follower.
+
+        If the response is successful, updates the match index and next index of the follower.
+        If the response is unsuccessful, decrements the next index of the follower and retries the AppendEntriesRequest.
+
+        :param append_entries_response: the AppendEntriesResponse received from the follower.
+        """
+        if append_entries_response.term == self.state.current_term and self.state.current_role == Role.LEADER:
+            if append_entries_response.success and \
+                    append_entries_response.last_log_index >= self.state.match_index[append_entries_response.node_id]:
+                self.state.next_index[append_entries_response.node_id] = append_entries_response.last_log_index + 1
+                self.state.match_index[append_entries_response.node_id] = append_entries_response.last_log_index
+                self.commit_log_entries()
+            elif self.state.next_index[append_entries_response.node_id] > 0:
+                self.state.next_index[append_entries_response.node_id] -= 1
+                self.replicate_log(append_entries_response.node_id)
+        elif append_entries_response.term > self.state.current_term:
+            self.state.current_term = append_entries_response.term
+            self.state.current_role = Role.FOLLOWER
+            self.state.voted_for = None
+            self.cancel_election_timer_callback()
+
     def replicate_log(self, follower_id: int) -> None:
         """
         Sends AppendEntriesRequest messages to the follower to replicate log entries.
