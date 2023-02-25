@@ -2,7 +2,7 @@ from math import ceil
 from typing import Callable, Optional, Any
 
 from raftkv.messages import Message, VoteRequest, VoteResponse
-from raftkv.state import AbstractState, Role
+from raftkv.state import AbstractState, Role, Entry
 
 
 class Node:
@@ -101,6 +101,23 @@ class Node:
             self.state.current_role = Role.FOLLOWER
             self.state.voted_for = None
             self.cancel_election_timer_callback()
+
+    def on_client_request(self, message: Any) -> None:
+        if self.state.current_role == Role.LEADER:
+            entry = Entry(message=message, term=self.state.current_term)
+            self.state.log.append(entry)
+            self.state.match_index[self.node_id] = self.state.last_log_index
+            followers_ids = self.nodes_ids.difference((self.node_id,))
+            for follower_id in followers_ids:
+                self.replicate_log(follower_id)
+        else:
+            self.send_message_callback(self.state.current_leader, message)
+
+    def on_heartbeat(self) -> None:
+        if self.state.current_role == Role.LEADER:
+            followers_ids = self.nodes_ids.difference((self.node_id,))
+            for follower_id in followers_ids:
+                self.replicate_log(follower_id)
 
     def replicate_log(self, follower_id: int) -> None:
         ...
