@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 
-from raftkv.messages import VoteRequest, VoteResponse, AppendEntriesRequest
+from raftkv.messages import VoteRequest, VoteResponse, AppendEntriesRequest, AppendEntriesResponse
 from raftkv.state import Role, Entry
 
 
@@ -367,7 +367,7 @@ def test_replicate_log_on_leader_standard_log(node):
     expected_message = AppendEntriesRequest(term=node.state.current_term,
                                             leader_id=node.state.current_leader,
                                             previous_log_index=0,
-                                            previous_log_term=0,
+                                            previous_log_term=1,
                                             entries=[Entry(1, "entry2"), Entry(1, "entry3")],
                                             leader_commit=node.state.commit_index)
 
@@ -407,3 +407,103 @@ def test_replicate_log_on_leader_standard_log(node):
     node.replicate_log(5)
 
     node.send_message_callback.assert_called_with(5, expected_message)
+
+
+def test_on_append_entries_request_returns_false_if_term_less_than_current_term(node):
+    node.state.current_term = 2
+    node.state.log = [Entry(term=1, message="entry1"), Entry(term=1, message="entry1"), Entry(term=2, message="entry1")]
+    node.state.last_log_index = 2
+    node.send_message_callback = MagicMock()
+    append_entries_request = AppendEntriesRequest(term=1,
+                                                  leader_id=1,
+                                                  previous_log_index=0,
+                                                  previous_log_term=1,
+                                                  entries=[],
+                                                  leader_commit=0)
+    node.on_append_entries_request(append_entries_request)
+
+    node.send_message_callback.assert_called_once_with(1, AppendEntriesResponse(term=2,
+                                                                                node_id=1,
+                                                                                success=False))
+
+
+def test_on_append_entries_request_returns_false_if_term_more_then_previous_term_index(node):
+    node.state.current_term = 2
+    node.state.log = [Entry(term=1, message="entry1"), Entry(term=1, message="entry1"), Entry(term=2, message="entry1")]
+    node.state.last_log_index = 2
+    node.send_message_callback = MagicMock()
+    append_entries_request = AppendEntriesRequest(term=1,
+                                                  leader_id=1,
+                                                  previous_log_index=2,
+                                                  previous_log_term=1,
+                                                  entries=[],
+                                                  leader_commit=0)
+
+    node.on_append_entries_request(append_entries_request)
+
+    node.send_message_callback.assert_called_once_with(1, AppendEntriesResponse(term=2,
+                                                                                node_id=1,
+                                                                                success=False))
+
+
+def test_on_append_entries_request_on_candidate_with_less_term_become_follower_and_replicate_entries(node):
+    node.state.current_term = 1
+    node.state.current_role = Role.CANDIDATE
+    node.state.voted_for = 1
+    node.state.log = [Entry(term=1, message="entry1"), Entry(term=1, message="entry1"), Entry(term=1, message="entry1")]
+    node.state.last_log_index = 2
+    node.cancel_election_timer_callback = MagicMock()
+    node.append_entries = MagicMock()
+    node.send_message_callback = MagicMock()
+
+    append_entries_request = AppendEntriesRequest(term=2,
+                                                  leader_id=2,
+                                                  previous_log_index=2,
+                                                  previous_log_term=1,
+                                                  entries=[],
+                                                  leader_commit=2)
+
+    node.on_append_entries_request(append_entries_request)
+
+    assert node.state.current_term == 2
+    assert node.state.current_role == Role.FOLLOWER
+    node.cancel_election_timer_callback.assert_called_once()
+    assert node.state.current_leader == 2
+    assert node.state.voted_for is None
+    node.append_entries.assert_called_once_with(append_entries_request.previous_log_index,
+                                                append_entries_request.leader_commit,
+                                                append_entries_request.entries)
+
+    node.send_message_callback.assert_called_once_with(2, AppendEntriesResponse(term=2,
+                                                                                node_id=1,
+                                                                                last_log_index=2,
+                                                                                success=True))
+
+
+def test_on_append_entries_request_appends_entries_if_previous_log_index_and_term_match(node):
+    node.state.log = [Entry(term=1, message="entry1"), Entry(term=1, message="entry2"), Entry(term=1, message="entry3")]
+    node.state.last_log_index = 2
+    node.cancel_election_timer_callback = MagicMock()
+    node.append_entries = MagicMock()
+    node.send_message_callback = MagicMock()
+
+    append_entries_request = AppendEntriesRequest(term=1,
+                                                  leader_id=2,
+                                                  previous_log_index=2,
+                                                  previous_log_term=1,
+                                                  entries=[Entry(term=1, message="entry4")],
+                                                  leader_commit=3)
+
+    node.on_append_entries_request(append_entries_request)
+
+    assert node.state.current_role == Role.FOLLOWER
+    assert node.state.current_leader == 2
+
+    node.append_entries.assert_called_once_with(append_entries_request.previous_log_index,
+                                                append_entries_request.leader_commit,
+                                                append_entries_request.entries)
+
+    node.send_message_callback.assert_called_once_with(2, AppendEntriesResponse(term=1,
+                                                                                node_id=1,
+                                                                                last_log_index=node.state.last_log_index,
+                                                                                success=True))
