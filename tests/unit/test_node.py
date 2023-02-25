@@ -1,7 +1,8 @@
+from typing import Optional
 from unittest.mock import MagicMock
 
 from raftkv.messages import VoteRequest, VoteResponse, AppendEntriesRequest, AppendEntriesResponse
-from raftkv.state import Role, Entry
+from raftkv.state import Role, Entry, AbstractState
 
 
 def test_on_election_timeout_or_leader_fault(node):
@@ -572,3 +573,78 @@ def test_on_append_entries_response_on_leader_with_term_ok_and_not_success(node)
     assert node.state.current_role == Role.LEADER
     assert node.state.next_index[2] == 1
     node.replicate_log.assert_called_once_with(2)
+
+
+class FakeState(AbstractState):
+    def __init__(self):
+        super().__init__()
+        self._current_term = 0
+        self._voted_for = None
+        self._log = []
+        self._commit_index = 0
+
+    @property
+    def current_term(self) -> int:
+        return self._current_term
+
+    @current_term.setter
+    def current_term(self, term: int) -> None:
+        self._current_term = term
+
+    @property
+    def voted_for(self) -> Optional[int]:
+        return self._voted_for
+
+    @voted_for.setter
+    def voted_for(self, node_id: int) -> None:
+        self._voted_for = node_id
+
+    @property
+    def log(self) -> list[Entry]:
+        return self._log
+
+    @log.setter
+    def log(self, log) -> None:
+        self._log = log
+
+    @property
+    def commit_index(self) -> int:
+        return self._commit_index
+
+    @commit_index.setter
+    def commit_index(self, commit_index: int) -> None:
+        self._commit_index = commit_index
+
+
+def test_append_entries_truncates_the_log_if_last_log_index_more_then_previous_log_index_and_terms_not_match(node):
+    node.state = FakeState()
+    node.state.log = [Entry(term=1, message="entry1"), Entry(term=1, message="entry1"), Entry(term=2, message="entry1")]
+    node.state.commit_index = 1
+
+    node.deliver_changes_callback = MagicMock()
+
+    node.append_entries(1, 2, [Entry(term=3, message="entry3")])
+
+    assert node.state.log == [Entry(term=1, message="entry1"), Entry(term=1, message="entry1"),
+                              Entry(term=3, message="entry3")]
+
+    assert node.state.commit_index == 2
+    node.deliver_changes_callback.assert_called_once_with("entry3")
+
+
+def test_append_entries_truncates_the_log_if_last_log_index_much_more_then_previous_log_index_and_terms_not_match(node):
+    node.state = FakeState()
+    node.state.log = [Entry(term=1, message="entry1"), Entry(term=1, message="entry1"), Entry(term=2, message="entry2"),
+                      Entry(term=2, message="entry1"), Entry(term=2, message="entry1"), Entry(term=2, message="entry1"),
+                      Entry(term=2, message="entry1"), Entry(term=2, message="entry1")]
+    node.state.commit_index = 1
+
+    node.deliver_changes_callback = MagicMock()
+
+    node.append_entries(2, 2, [Entry(term=3, message="entry1")])
+
+    assert node.state.log == [Entry(term=1, message="entry1"), Entry(term=1, message="entry1"),
+                              Entry(term=2, message="entry2"), Entry(term=3, message="entry1")]
+
+    assert node.state.commit_index == 2
+    node.deliver_changes_callback.assert_called_once_with("entry2")
