@@ -1,7 +1,7 @@
 from math import ceil
 from typing import Callable, Optional, Any
 
-from raftkv.messages import Message, VoteRequest, VoteResponse
+from raftkv.messages import Message, VoteRequest, VoteResponse, AppendEntriesRequest, AppendEntriesResponse
 from raftkv.state import AbstractState, Role, Entry
 
 
@@ -129,6 +129,11 @@ class Node:
                 self.replicate_log(follower_id)
 
     def replicate_log(self, follower_id: int) -> None:
+        """
+        Sends AppendEntriesRequest messages to the follower to replicate log entries.
+
+        :param follower_id: the ID of the follower node to which AppendEntriesRequest messages are sent.
+        """
         previous_log_index = self.state.next_index[follower_id] - 1
         entries = self.state.log[previous_log_index + 1:]
 
