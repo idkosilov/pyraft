@@ -1,8 +1,7 @@
-from typing import Optional
 from unittest.mock import MagicMock, call
 
 from raftkv.messages import VoteRequest, VoteResponse, AppendEntriesRequest, AppendEntriesResponse
-from raftkv.state import Role, Entry, AbstractState
+from raftkv.state import Role, Entry
 
 
 def test_on_election_timeout_or_leader_fault(node):

@@ -14,6 +14,7 @@ class KeyValueStorage(MutableMapping[str, Any]):
     persistently on disk. The storage can be used as a context manager to ensure that the dbm
     database is properly closed when the storage object is no longer needed.
     """
+
     def __init__(self, filename: str | PathLike, write_back: bool = False) -> None:
         """
         Initialize the key-value storage.

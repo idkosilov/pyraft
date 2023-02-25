@@ -1,11 +1,10 @@
 import os
 from typing import Optional
-from unittest.mock import MagicMock
 
 import pytest
 
 from raftkv.node import Node
-from raftkv.state import State, Entry, AbstractState, Role
+from raftkv.state import State, Entry, AbstractState
 
 
 @pytest.fixture
