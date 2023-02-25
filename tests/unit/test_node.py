@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 
-from raftkv.messages import VoteRequest, VoteResponse
+from raftkv.messages import VoteRequest, VoteResponse, AppendEntriesRequest
 from raftkv.state import Role, Entry
 
 
@@ -309,3 +309,101 @@ def test_on_heartbeat_follower(node):
 
     assert node.replicate_log.call_count == 0
 
+
+def test_replicate_log_on_leader_empty_log(node):
+    node.state.current_term = 1
+    node.state.current_role = Role.LEADER
+    node.state.current_leader = node.node_id
+    node.state.log = []
+    node.state.last_log_index = 0
+    node.state.last_log_term = 0
+    node.state.next_index = {2: 0, 3: 0, 4: 0, 5: 0}
+    node.send_message_callback = MagicMock()
+
+    expected_message = AppendEntriesRequest(term=node.state.current_term,
+                                            leader_id=node.state.current_leader,
+                                            previous_log_index=-1,
+                                            previous_log_term=0,
+                                            entries=[],
+                                            leader_commit=node.state.commit_index)
+
+    node.replicate_log(2)
+
+    node.send_message_callback.assert_called_with(2, expected_message)
+
+
+def test_replicate_log_on_leader_first_message_log(node):
+    node.state.current_term = 1
+    node.state.current_role = Role.LEADER
+    node.state.current_leader = node.node_id
+    node.state.log = [Entry(1, "entry1"), ]
+    node.state.last_log_index = 1
+    node.state.last_log_term = 1
+    node.state.next_index = {2: 0, 3: 0, 4: 0, 5: 0}
+    node.send_message_callback = MagicMock()
+
+    expected_message = AppendEntriesRequest(term=node.state.current_term,
+                                            leader_id=node.state.current_leader,
+                                            previous_log_index=-1,
+                                            previous_log_term=0,
+                                            entries=[Entry(1, "entry1"), ],
+                                            leader_commit=node.state.commit_index)
+
+    node.replicate_log(2)
+
+    node.send_message_callback.assert_called_with(2, expected_message)
+
+
+def test_replicate_log_on_leader_standard_log(node):
+    node.state.current_term = 1
+    node.state.current_role = Role.LEADER
+    node.state.current_leader = node.node_id
+    node.state.log = [Entry(1, "entry1"), Entry(1, "entry2"), Entry(1, "entry3")]
+    node.state.last_log_index = 2
+    node.state.last_log_term = 1
+    node.state.next_index = {2: 1, 3: 2, 4: 3, 5: 0}
+    node.send_message_callback = MagicMock()
+
+    expected_message = AppendEntriesRequest(term=node.state.current_term,
+                                            leader_id=node.state.current_leader,
+                                            previous_log_index=0,
+                                            previous_log_term=0,
+                                            entries=[Entry(1, "entry2"), Entry(1, "entry3")],
+                                            leader_commit=node.state.commit_index)
+
+    node.replicate_log(2)
+
+    node.send_message_callback.assert_called_with(2, expected_message)
+
+    expected_message = AppendEntriesRequest(term=node.state.current_term,
+                                            leader_id=node.state.current_leader,
+                                            previous_log_index=1,
+                                            previous_log_term=1,
+                                            entries=[Entry(1, "entry3")],
+                                            leader_commit=node.state.commit_index)
+
+    node.replicate_log(3)
+
+    node.send_message_callback.assert_called_with(3, expected_message)
+
+    expected_message = AppendEntriesRequest(term=node.state.current_term,
+                                            leader_id=node.state.current_leader,
+                                            previous_log_index=2,
+                                            previous_log_term=1,
+                                            entries=[],
+                                            leader_commit=node.state.commit_index)
+
+    node.replicate_log(4)
+
+    node.send_message_callback.assert_called_with(4, expected_message)
+
+    expected_message = AppendEntriesRequest(term=node.state.current_term,
+                                            leader_id=node.state.current_leader,
+                                            previous_log_index=-1,
+                                            previous_log_term=0,
+                                            entries=[Entry(1, "entry1"), Entry(1, "entry2"), Entry(1, "entry3")],
+                                            leader_commit=node.state.commit_index)
+
+    node.replicate_log(5)
+
+    node.send_message_callback.assert_called_with(5, expected_message)
