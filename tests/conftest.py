@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 from unittest.mock import MagicMock
 
 import pytest
@@ -27,20 +28,52 @@ def key_value_state_storage_predefined(key_value_state_storage_initial):
     yield key_value_state_storage_initial
 
 
+class FakeState(AbstractState):
+    def __init__(self):
+        super().__init__()
+        self._current_term = 0
+        self._voted_for = None
+        self._log = []
+        self._commit_index = 0
+
+    @property
+    def current_term(self) -> int:
+        return self._current_term
+
+    @current_term.setter
+    def current_term(self, term: int) -> None:
+        self._current_term = term
+
+    @property
+    def voted_for(self) -> Optional[int]:
+        return self._voted_for
+
+    @voted_for.setter
+    def voted_for(self, node_id: int) -> None:
+        self._voted_for = node_id
+
+    @property
+    def log(self) -> list[Entry]:
+        return self._log
+
+    @log.setter
+    def log(self, log) -> None:
+        self._log = log
+
+    @property
+    def commit_index(self) -> int:
+        return self._commit_index
+
+    @commit_index.setter
+    def commit_index(self, commit_index: int) -> None:
+        self._commit_index = commit_index
+
+
 @pytest.fixture
 def node():
     node_id = 1
     nodes = {1, 2, 3, 4, 5}
 
-    state = MagicMock(spec=AbstractState)
-    state.current_term = 0
-    state.voted_for = None
-    state.log = []
-    state.commit_length = 0
-    state.current_role = Role.FOLLOWER
-    state.current_leader = None
-    state.votes_received = set()
-    state.next_index = {}
-    state.match_index = {}
+    state = FakeState()
 
     return Node(node_id, nodes, state)

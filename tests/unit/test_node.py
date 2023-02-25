@@ -32,7 +32,6 @@ def test_on_election_timeout_or_leader_fault(node):
 
 def test_on_vote_request_to_node_granted(node):
     node.send_message_callback = MagicMock()
-    node.state.last_log_term = 0
     vote_request = VoteRequest(term=2, candidate_id=2, last_log_index=10, last_log_term=1)
     node.on_vote_request(vote_request)
 
@@ -50,7 +49,6 @@ def test_on_vote_request_to_node_granted(node):
 
 def test_on_vote_request_to_node_already_voted_for_this_candidate_granted(node):
     node.send_message_callback = MagicMock()
-    node.state.last_log_term = 0
     node.state.voted_for = 2
     node.state.current_term = 2
     vote_request = VoteRequest(term=2, candidate_id=2, last_log_index=10, last_log_term=1)
@@ -70,7 +68,6 @@ def test_on_vote_request_to_node_already_voted_for_this_candidate_granted(node):
 
 def test_on_vote_request_to_node_already_voted_for_another_candidate_not_granted(node):
     node.send_message_callback = MagicMock()
-    node.state.last_log_term = 0
     node.state.voted_for = 3
     node.state.current_term = 2
     vote_request = VoteRequest(term=2, candidate_id=2, last_log_index=10, last_log_term=1)
@@ -90,7 +87,6 @@ def test_on_vote_request_to_node_already_voted_for_another_candidate_not_granted
 
 def test_on_vote_request_to_candidate_node_not_granted(node):
     node.send_message_callback = MagicMock()
-    node.state.last_log_term = 0
     node.state.voted_for = node.node_id
     node.state.current_role = Role.CANDIDATE
     node.state.current_term = 2
@@ -111,7 +107,6 @@ def test_on_vote_request_to_candidate_node_not_granted(node):
 
 def test_on_vote_request_to_candidate_with_outdated_term_become_follower_and_granted(node):
     node.send_message_callback = MagicMock()
-    node.state.last_log_term = 0
     node.state.voted_for = node.node_id
     node.state.current_role = Role.CANDIDATE
     node.state.current_term = 1
@@ -132,7 +127,7 @@ def test_on_vote_request_to_candidate_with_outdated_term_become_follower_and_gra
 
 def test_on_vote_request_with_outdated_log_to_node_not_granted(node):
     node.send_message_callback = MagicMock()
-    node.state.last_log_term = 2
+    node.state.log = [Entry(term=1, message="entry1"), Entry(term=1, message="entry2"), Entry(term=2, message="entry3")]
     node.state.voted_for = 4
     node.state.current_role = Role.FOLLOWER
     node.state.current_term = 2
@@ -154,7 +149,7 @@ def test_on_vote_request_with_outdated_log_to_node_not_granted(node):
 
 def test_on_vote_request_with_outdated_term_to_node_not_granted(node):
     node.send_message_callback = MagicMock()
-    node.state.last_log_term = 2
+    node.state.log = [Entry(term=1, message="entry1"), Entry(term=1, message="entry2"), Entry(term=2, message="entry3")]
     node.state.voted_for = 4
     node.state.current_role = Role.FOLLOWER
     node.state.current_term = 2
@@ -316,8 +311,6 @@ def test_replicate_log_on_leader_empty_log(node):
     node.state.current_role = Role.LEADER
     node.state.current_leader = node.node_id
     node.state.log = []
-    node.state.last_log_index = 0
-    node.state.last_log_term = 0
     node.state.next_index = {2: 0, 3: 0, 4: 0, 5: 0}
     node.send_message_callback = MagicMock()
 
@@ -338,8 +331,6 @@ def test_replicate_log_on_leader_first_message_log(node):
     node.state.current_role = Role.LEADER
     node.state.current_leader = node.node_id
     node.state.log = [Entry(1, "entry1"), ]
-    node.state.last_log_index = 1
-    node.state.last_log_term = 1
     node.state.next_index = {2: 0, 3: 0, 4: 0, 5: 0}
     node.send_message_callback = MagicMock()
 
@@ -360,8 +351,6 @@ def test_replicate_log_on_leader_standard_log(node):
     node.state.current_role = Role.LEADER
     node.state.current_leader = node.node_id
     node.state.log = [Entry(1, "entry1"), Entry(1, "entry2"), Entry(1, "entry3")]
-    node.state.last_log_index = 2
-    node.state.last_log_term = 1
     node.state.next_index = {2: 1, 3: 2, 4: 3, 5: 0}
     node.send_message_callback = MagicMock()
 
@@ -413,7 +402,6 @@ def test_replicate_log_on_leader_standard_log(node):
 def test_on_append_entries_request_returns_false_if_term_less_than_current_term(node):
     node.state.current_term = 2
     node.state.log = [Entry(term=1, message="entry1"), Entry(term=1, message="entry1"), Entry(term=2, message="entry1")]
-    node.state.last_log_index = 2
     node.send_message_callback = MagicMock()
     append_entries_request = AppendEntriesRequest(term=1,
                                                   leader_id=1,
@@ -431,7 +419,6 @@ def test_on_append_entries_request_returns_false_if_term_less_than_current_term(
 def test_on_append_entries_request_returns_false_if_term_more_then_previous_term_index(node):
     node.state.current_term = 2
     node.state.log = [Entry(term=1, message="entry1"), Entry(term=1, message="entry1"), Entry(term=2, message="entry1")]
-    node.state.last_log_index = 2
     node.send_message_callback = MagicMock()
     append_entries_request = AppendEntriesRequest(term=1,
                                                   leader_id=1,
@@ -452,7 +439,6 @@ def test_on_append_entries_request_on_candidate_with_less_term_become_follower_a
     node.state.current_role = Role.CANDIDATE
     node.state.voted_for = 1
     node.state.log = [Entry(term=1, message="entry1"), Entry(term=1, message="entry1"), Entry(term=1, message="entry1")]
-    node.state.last_log_index = 2
     node.cancel_election_timer_callback = MagicMock()
     node.append_entries = MagicMock()
     node.send_message_callback = MagicMock()
@@ -483,7 +469,6 @@ def test_on_append_entries_request_on_candidate_with_less_term_become_follower_a
 
 def test_on_append_entries_request_appends_entries_if_previous_log_index_and_term_match(node):
     node.state.log = [Entry(term=1, message="entry1"), Entry(term=1, message="entry2"), Entry(term=1, message="entry3")]
-    node.state.last_log_index = 2
     node.cancel_election_timer_callback = MagicMock()
     node.append_entries = MagicMock()
     node.send_message_callback = MagicMock()
@@ -575,49 +560,7 @@ def test_on_append_entries_response_on_leader_with_term_ok_and_not_success(node)
     node.replicate_log.assert_called_once_with(2)
 
 
-class FakeState(AbstractState):
-    def __init__(self):
-        super().__init__()
-        self._current_term = 0
-        self._voted_for = None
-        self._log = []
-        self._commit_index = 0
-
-    @property
-    def current_term(self) -> int:
-        return self._current_term
-
-    @current_term.setter
-    def current_term(self, term: int) -> None:
-        self._current_term = term
-
-    @property
-    def voted_for(self) -> Optional[int]:
-        return self._voted_for
-
-    @voted_for.setter
-    def voted_for(self, node_id: int) -> None:
-        self._voted_for = node_id
-
-    @property
-    def log(self) -> list[Entry]:
-        return self._log
-
-    @log.setter
-    def log(self, log) -> None:
-        self._log = log
-
-    @property
-    def commit_index(self) -> int:
-        return self._commit_index
-
-    @commit_index.setter
-    def commit_index(self, commit_index: int) -> None:
-        self._commit_index = commit_index
-
-
 def test_append_entries_truncates_the_log_if_last_log_index_more_then_previous_log_index_and_terms_not_match(node):
-    node.state = FakeState()
     node.state.log = [Entry(term=1, message="entry1"), Entry(term=1, message="entry1"), Entry(term=2, message="entry1")]
     node.state.commit_index = 1
 
@@ -633,7 +576,6 @@ def test_append_entries_truncates_the_log_if_last_log_index_more_then_previous_l
 
 
 def test_append_entries_truncates_the_log_if_last_log_index_much_more_then_previous_log_index_and_terms_not_match(node):
-    node.state = FakeState()
     node.state.log = [Entry(term=1, message="entry1"), Entry(term=1, message="entry1"), Entry(term=2, message="entry2"),
                       Entry(term=2, message="entry1"), Entry(term=2, message="entry1"), Entry(term=2, message="entry1"),
                       Entry(term=2, message="entry1"), Entry(term=2, message="entry1")]
