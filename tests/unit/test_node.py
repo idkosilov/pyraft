@@ -1,7 +1,7 @@
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 from raftkv.messages import VoteRequest, VoteResponse
-from raftkv.state import Role
+from raftkv.state import Role, Entry
 
 
 def test_on_election_timeout_or_leader_fault(node):
@@ -247,3 +247,65 @@ def test_on_vote_response_on_higher_term_become_follower(node):
     assert node.state.current_role == Role.FOLLOWER
     assert node.state.voted_for is None
     assert node.cancel_election_timer_callback.call_count == 1
+
+
+def test_on_client_request_leader_replicate_log(node):
+    node.replicate_log = MagicMock()
+    node.state.current_role = Role.LEADER
+    node.state.current_term = 2
+    node.state.match_index = {node.node_id: 0}
+
+    node.on_client_request("SET X 12")
+
+    expected_log = [Entry(term=2, message="SET X 12")]
+
+    assert node.replicate_log.call_count == 4
+    assert node.state.log == expected_log
+
+    followers_ids = {2, 3, 4, 5}
+    for call_args in node.replicate_log.call_args_list:
+        follower_id, = call_args.args
+        assert follower_id in followers_ids
+        followers_ids.discard(follower_id)
+
+
+def test_on_client_request_follower_sent_to_leader(node):
+    node.send_message_callback = MagicMock()
+    node.state.current_role = Role.FOLLOWER
+
+    node.on_client_request("SET X 12")
+
+    assert node.send_message_callback.call_count == 1
+    node.send_message_callback.assert_called_with(node.state.current_leader, "SET X 12")
+
+
+def test_on_heartbeat_on_leader(node):
+    node.replicate_log = MagicMock()
+    node.state.current_role = Role.LEADER
+    node.state.current_term = 2
+
+    node.on_heartbeat()
+
+    assert node.replicate_log.call_count == 4
+
+    followers_ids = {2, 3, 4, 5}
+    for call_args in node.replicate_log.call_args_list:
+        follower_id, = call_args.args
+        assert follower_id in followers_ids
+        followers_ids.discard(follower_id)
+
+
+def test_on_heartbeat_follower(node):
+    node.replicate_log = MagicMock()
+    node.state.current_role = Role.FOLLOWER
+
+    node.on_heartbeat()
+
+    assert node.replicate_log.call_count == 0
+
+    node.state.current_role = Role.CANDIDATE
+
+    node.on_heartbeat()
+
+    assert node.replicate_log.call_count == 0
+
