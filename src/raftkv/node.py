@@ -128,6 +128,36 @@ class Node:
             for follower_id in followers_ids:
                 self.replicate_log(follower_id)
 
+    def on_append_entries_request(self, append_entries_request: AppendEntriesRequest) -> None:
+        if append_entries_request.term > self.state.current_term:
+            self.state.current_term = append_entries_request.term
+            self.state.voted_for = None
+            self.cancel_election_timer_callback()
+
+        if append_entries_request.term == self.state.current_term:
+            self.state.current_role = Role.FOLLOWER
+            self.state.current_leader = append_entries_request.leader_id
+
+        previous_log_index = append_entries_request.previous_log_index
+        previous_log_term = append_entries_request.previous_log_term
+        is_log_ok = self.state.last_log_index >= previous_log_index and (
+                previous_log_index == -1 or self.state.log[previous_log_term].term == previous_log_term)
+
+        if append_entries_request.term == self.state.current_term and is_log_ok:
+            self.append_entries(append_entries_request.previous_log_index,
+                                append_entries_request.leader_commit,
+                                append_entries_request.entries)
+            message = AppendEntriesResponse(term=self.state.current_term,
+                                            node_id=self.node_id,
+                                            last_log_index=self.state.last_log_index,
+                                            success=True)
+        else:
+            message = AppendEntriesResponse(term=self.state.current_term,
+                                            node_id=self.node_id,
+                                            success=False)
+
+        self.send_message_callback(append_entries_request.leader_id, message)
+
     def replicate_log(self, follower_id: int) -> None:
         """
         Sends AppendEntriesRequest messages to the follower to replicate log entries.
