@@ -1,5 +1,6 @@
 from abc import ABC
 from dataclasses import dataclass
+from typing import Optional
 
 from raftkv.state import Entry
 
@@ -37,5 +38,5 @@ class AppendEntriesRequest(Message):
 class AppendEntriesResponse(Message):
     term: int
     node_id: int
-    last_log_index: int
     success: bool
+    last_log_index: Optional[int] = None
