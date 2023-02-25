@@ -211,4 +211,15 @@ class Node:
         self.send_message_callback(follower_id, message)
 
     def append_entries(self, previous_log_index: int, leader_commit: int, entries: list[Entry]) -> None:
-        ...  # TODO
+        if len(entries) > 0 and self.state.last_log_index > previous_log_index:
+            index = min(self.state.last_log_index, previous_log_index + len(entries))
+            if self.state.log[index].term != entries[index - previous_log_index - 1]:
+                self.state.log = self.state.log[:previous_log_index + 1]
+
+        if previous_log_index + len(entries) > self.state.last_log_index:
+            self.state.log.extend(entries)
+
+        if leader_commit > self.state.commit_index:
+            for entry in self.state.log[self.state.commit_index + 1: leader_commit + 1]:
+                self.deliver_changes_callback(entry.message)
+            self.state.commit_index = leader_commit
