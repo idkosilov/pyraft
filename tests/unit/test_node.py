@@ -589,3 +589,30 @@ def test_append_entries_truncates_the_log_if_last_log_index_much_more_then_previ
 
     assert node.state.commit_index == 2
     node.deliver_changes_callback.assert_called_once_with("entry1")
+
+
+def test_commit_log_entries_deliver_changes_on_quorum(node):
+    node.state.log = [Entry(term=1, message="entry1"), Entry(term=1, message="entry1"), Entry(term=2, message="entry2"),
+                      Entry(term=2, message="entry1"), Entry(term=2, message="entry1"), Entry(term=2, message="entry1"),
+                      Entry(term=2, message="entry1"), Entry(term=2, message="entry1")]
+    node.state.commit_index = 1
+    node.state.match_index = {0: 4, 1: 4, 2: 4, 3: 4, 4: 4, 5: 4}
+    node.deliver_changes_callback = MagicMock()
+    node.commit_log_entries()
+
+    assert node.state.commit_index == 4
+    assert node.deliver_changes_callback.call_count == 3
+    node.deliver_changes_callback.assert_has_calls([call("entry1"), call("entry2"), call("entry1")])
+
+
+def test_commit_log_entries_dont_change_commit_index_if_not_quorum(node):
+    node.state.log = [Entry(term=1, message="entry1"), Entry(term=1, message="entry1"), Entry(term=2, message="entry2"),
+                      Entry(term=2, message="entry1"), Entry(term=2, message="entry1"), Entry(term=2, message="entry1"),
+                      Entry(term=2, message="entry1"), Entry(term=2, message="entry1")]
+    node.state.commit_index = 1
+    node.state.match_index = {0: 2, 1: 1, 2: 1, 3: 2, 4: 2, 5: 1}
+    node.deliver_changes_callback = MagicMock()
+    node.commit_log_entries()
+
+    assert node.state.commit_index == 1
+    assert node.deliver_changes_callback.call_count == 0
