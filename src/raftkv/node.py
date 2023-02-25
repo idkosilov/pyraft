@@ -129,5 +129,21 @@ class Node:
                 self.replicate_log(follower_id)
 
     def replicate_log(self, follower_id: int) -> None:
-        ...
-        # TODO
+        previous_log_index = self.state.next_index[follower_id] - 1
+        entries = self.state.log[previous_log_index + 1:]
+
+        previous_log_term = 0
+        if previous_log_index > 0:
+            previous_log_term = self.state.log[previous_log_index].term
+
+        message = AppendEntriesRequest(term=self.state.current_term,
+                                       leader_id=self.node_id,
+                                       previous_log_index=previous_log_index,
+                                       previous_log_term=previous_log_term,
+                                       entries=entries,
+                                       leader_commit=self.state.commit_index)
+
+        self.send_message_callback(follower_id, message)
+
+    def append_entries(self, previous_log_index: int, leader_commit: int, entries: list[Entry]) -> None:
+        ...  # TODO
