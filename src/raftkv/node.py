@@ -103,6 +103,12 @@ class Node:
             self.cancel_election_timer_callback()
 
     def on_client_request(self, message: Any) -> None:
+        """
+        Receives a client request message and if the node is the current leader, appends the message to its log
+        and replicates the log to all other nodes in the cluster.
+
+        :param message: the message received from the client.
+        """
         if self.state.current_role == Role.LEADER:
             entry = Entry(message=message, term=self.state.current_term)
             self.state.log.append(entry)
@@ -114,6 +120,9 @@ class Node:
             self.send_message_callback(self.state.current_leader, message)
 
     def on_heartbeat(self) -> None:
+        """
+        Sends AppendEntriesRequests to all followers in the cluster to replicate log entries.
+        """
         if self.state.current_role == Role.LEADER:
             followers_ids = self.nodes_ids.difference((self.node_id,))
             for follower_id in followers_ids:
