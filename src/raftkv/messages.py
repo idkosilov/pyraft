@@ -37,5 +37,5 @@ class AppendEntriesRequest(Message):
 class AppendEntriesResponse(Message):
     term: int
     node_id: int
-    ack: int
+    last_log_index: int
     success: bool
