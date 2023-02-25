@@ -223,3 +223,17 @@ class Node:
             for entry in self.state.log[self.state.commit_index + 1: leader_commit + 1]:
                 self.deliver_changes_callback(entry.message)
             self.state.commit_index = leader_commit
+
+    def commit_log_entries(self) -> None:
+        while self.state.commit_index < self.state.last_log_index:
+            acks = 0
+            for node_id in self.nodes_ids:
+                if self.state.match_index[node_id] > self.state.commit_index:
+                    acks += 1
+
+                if acks >= ceil((len(self.nodes_ids) + 1) / 2):
+                    self.state.commit_index += 1
+                    entry = self.state.log[self.state.commit_index]
+                    self.deliver_changes_callback(entry.message)
+                else:
+                    break
