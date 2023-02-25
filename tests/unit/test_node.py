@@ -1,5 +1,5 @@
 from typing import Optional
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 from raftkv.messages import VoteRequest, VoteResponse, AppendEntriesRequest, AppendEntriesResponse
 from raftkv.state import Role, Entry, AbstractState
@@ -623,13 +623,13 @@ def test_append_entries_truncates_the_log_if_last_log_index_more_then_previous_l
 
     node.deliver_changes_callback = MagicMock()
 
-    node.append_entries(1, 2, [Entry(term=3, message="entry3")])
+    node.append_entries(1, 3, [Entry(term=3, message="entry3")])
 
     assert node.state.log == [Entry(term=1, message="entry1"), Entry(term=1, message="entry1"),
                               Entry(term=3, message="entry3")]
 
-    assert node.state.commit_index == 2
-    node.deliver_changes_callback.assert_called_once_with("entry3")
+    assert node.state.commit_index == 3
+    node.deliver_changes_callback.assert_has_calls([call("entry1"), call("entry3")])
 
 
 def test_append_entries_truncates_the_log_if_last_log_index_much_more_then_previous_log_index_and_terms_not_match(node):
@@ -647,4 +647,4 @@ def test_append_entries_truncates_the_log_if_last_log_index_much_more_then_previ
                               Entry(term=2, message="entry2"), Entry(term=3, message="entry1")]
 
     assert node.state.commit_index == 2
-    node.deliver_changes_callback.assert_called_once_with("entry2")
+    node.deliver_changes_callback.assert_called_once_with("entry1")
