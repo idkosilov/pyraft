@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import pickle
-from os import PathLike
 from collections.abc import MutableMapping
+from os import PathLike
 from typing import Iterator, Any
 
 
