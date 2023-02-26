@@ -10,7 +10,7 @@ def test_election_timer_not_called_if_run_time_above_election_timeout_lower(elec
 
     election_timer.start()
 
-    sleep(0.1)
+    sleep(0.01)
 
     election_timer.stop()
     election_timer.join()
@@ -24,7 +24,7 @@ def test_election_timer_not_called_if_run_time_under_election_timeout_upper(elec
 
     election_timer.start()
 
-    sleep(1.5)
+    sleep(0.15)
 
     election_timer.stop()
     election_timer.join()
@@ -38,9 +38,9 @@ def test_election_timer_not_called_on_cancel(election_timer):
 
     election_timer.start()
 
-    sleep(0.4)
+    sleep(0.04)
     election_timer.cancel()
-    sleep(0.4)
+    sleep(0.04)
     election_timer.stop()
     election_timer.join()
 
@@ -48,9 +48,9 @@ def test_election_timer_not_called_on_cancel(election_timer):
 
 
 @pytest.mark.parametrize("run_time, on_heartbeat_callback_calls_count", [
-    (0.05, 0),
-    (0.15, 1),
-    (0.25, 2)
+    (0.005, 0),
+    (0.015, 1),
+    (0.025, 2)
 ])
 def test_heartbeat_timer(heartbeat_timer, run_time, on_heartbeat_callback_calls_count):
     on_heartbeat_callback_mock = MagicMock()

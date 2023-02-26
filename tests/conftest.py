@@ -82,14 +82,14 @@ def node():
 
 @pytest.fixture
 def election_timer():
-    election_timeout_lower = 500
-    election_timeout_upper = 1000
+    election_timeout_lower = 50
+    election_timeout_upper = 100
     return ElectionTimer(election_timeout_lower, election_timeout_upper)
 
 
 @pytest.fixture
 def heartbeat_timer():
-    heartbeat_timeout = 100
+    heartbeat_timeout = 10
     return HeartbeatTimer(heartbeat_timeout)
 
 

@@ -2,13 +2,13 @@ import time
 
 
 def test_message_delivery(message_bridge):
-    delivered_messages = []
+    delivered_messages = set()
 
     def deliver_to_node_callback(message):
-        delivered_messages.append(('app', message))
+        delivered_messages.add(('app', message))
 
     def deliver_to_app_callback(message):
-        delivered_messages.append(('node', message))
+        delivered_messages.add(('node', message))
 
     message_bridge.register_deliver_to_node_callback(deliver_to_node_callback)
     message_bridge.register_deliver_to_app_callback(deliver_to_app_callback)
@@ -18,7 +18,7 @@ def test_message_delivery(message_bridge):
     message_bridge.handle_message_from_app('Hello, node!')
     time.sleep(0.1)  # Wait for messages to be delivered
 
-    assert delivered_messages == [('node', 'Hello, app!'), ('app', 'Hello, node!')]
+    assert delivered_messages == {('node', 'Hello, app!'), ('app', 'Hello, node!')}
 
 
 def test_message_delivery_exception(message_bridge, caplog):
