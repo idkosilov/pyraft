@@ -1,6 +1,6 @@
 import argparse
 
-from raftkv_console.key_value_console import RaftKeyValueStorageShell
+from console.key_value_console import RaftKeyValueStorageShell
 
 
 def main():
