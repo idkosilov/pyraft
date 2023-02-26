@@ -4,7 +4,7 @@ from typing import Callable, Optional, Any
 
 import zmq
 
-from raftkv.configuration import NodeConfiguration
+from raft.configuration import NodeConfiguration
 
 
 class Server:

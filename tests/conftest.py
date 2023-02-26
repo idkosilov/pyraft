@@ -3,10 +3,10 @@ from typing import Optional
 
 import pytest
 
-from raftkv.message_bridge import MessageBridge
-from raftkv.node import Node
-from raftkv.state import State, Entry, AbstractState
-from raftkv.timer import ElectionTimer, HeartbeatTimer
+from raft.message_bridge import MessageBridge
+from raft.node import Node
+from raft.state import State, Entry, AbstractState
+from raft.timer import ElectionTimer, HeartbeatTimer
 
 
 @pytest.fixture

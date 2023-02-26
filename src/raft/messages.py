@@ -2,7 +2,7 @@ from abc import ABC
 from dataclasses import dataclass
 from typing import Optional
 
-from raftkv.state import Entry
+from raft.state import Entry
 
 
 class Message(ABC):

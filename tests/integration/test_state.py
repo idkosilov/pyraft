@@ -1,6 +1,6 @@
 import pytest
 
-from raftkv.state import Entry
+from raft.state import Entry
 
 
 @pytest.mark.parametrize("state_storage", [

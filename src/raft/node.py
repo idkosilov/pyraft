@@ -1,8 +1,8 @@
 from math import ceil
 from typing import Callable, Optional, Any
 
-from raftkv.messages import Message, VoteRequest, VoteResponse, AppendEntriesRequest, AppendEntriesResponse
-from raftkv.state import AbstractState, Role, Entry
+from raft.messages import Message, VoteRequest, VoteResponse, AppendEntriesRequest, AppendEntriesResponse
+from raft.state import AbstractState, Role, Entry
 
 
 class Node:
