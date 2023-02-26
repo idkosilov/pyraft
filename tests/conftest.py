@@ -3,6 +3,7 @@ from typing import Optional
 
 import pytest
 
+from raftkv.message_bridge import MessageBridge
 from raftkv.node import Node
 from raftkv.state import State, Entry, AbstractState
 from raftkv.timer import ElectionTimer, HeartbeatTimer
@@ -90,3 +91,10 @@ def election_timer():
 def heartbeat_timer():
     heartbeat_timeout = 100
     return HeartbeatTimer(heartbeat_timeout)
+
+
+@pytest.fixture
+def message_bridge():
+    message_bridge = MessageBridge()
+    yield message_bridge
+    message_bridge.stop()
