@@ -8,6 +8,7 @@ class ElectionTimer(Thread):
     Timer for managing elections in a distributed system.
 
     """
+
     def __init__(self, election_timeout_lower: int, election_timeout_upper: int) -> None:
         """
         Initialize an election timer
@@ -72,6 +73,7 @@ class HeartbeatTimer(Thread):
     Timer for managing heartbeats in a distributed system.
 
     """
+
     def __init__(self, heartbeat_timeout: int) -> None:
         """
         Initialize an election timer

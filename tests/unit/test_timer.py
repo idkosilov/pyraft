@@ -1,4 +1,3 @@
-from threading import Thread
 from time import sleep
 from unittest.mock import MagicMock
 
