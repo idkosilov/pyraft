@@ -93,12 +93,10 @@ class MessageBridge:
         self.is_running = False
         self.messages_queue_to_app.put(StopCommand())
         self.messages_queue_to_node.put(StopCommand())
-        with self.messages_queue_to_node.mutex:
-            self.messages_queue_to_node.queue.clear()
-        with self.messages_queue_to_app.mutex:
-            self.messages_queue_to_app.queue.clear()
         self.worker_deliver_to_node.join()
         self.worker_deliver_to_app.join()
+        self.messages_queue_to_node.queue.clear()
+        self.messages_queue_to_app.queue.clear()
 
     def handle_message_from_node(self, message: Any) -> None:
         """
