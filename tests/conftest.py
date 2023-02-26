@@ -5,6 +5,7 @@ import pytest
 
 from raftkv.node import Node
 from raftkv.state import State, Entry, AbstractState
+from raftkv.timer import ElectionTimer, HeartbeatTimer
 
 
 @pytest.fixture
@@ -76,3 +77,16 @@ def node():
     state = FakeState()
 
     return Node(node_id, nodes, state)
+
+
+@pytest.fixture
+def election_timer():
+    election_timeout_lower = 500
+    election_timeout_upper = 1000
+    return ElectionTimer(election_timeout_lower, election_timeout_upper)
+
+
+@pytest.fixture
+def heartbeat_timer():
+    heartbeat_timeout = 100
+    return HeartbeatTimer(heartbeat_timeout)

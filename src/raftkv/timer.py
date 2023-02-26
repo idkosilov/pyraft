@@ -3,7 +3,7 @@ from threading import Thread, Event
 from typing import Callable, Optional
 
 
-class ElectionTimer:
+class ElectionTimer(Thread):
     """
     Timer for managing elections in a distributed system.
 
@@ -30,7 +30,7 @@ class ElectionTimer:
 
         :return: a random election timeout in seconds.
         """
-        return randint(self.election_timeout_lower, self.election_timeout_upper)
+        return randint(self.election_timeout_lower, self.election_timeout_upper) / 1000
 
     def set_on_election_timeout(self, on_election_timeout: Callable[[], None]) -> None:
         """
@@ -76,10 +76,10 @@ class HeartbeatTimer(Thread):
         """
         Initialize an election timer
 
-        :param heartbeat_timeout: the timeout for the heartbeat.
+        :param heartbeat_timeout: the timeout for the heartbeat in milliseconds.
         """
         super().__init__()
-        self.heartbeat_timeout: int = heartbeat_timeout
+        self.heartbeat_timeout: int = heartbeat_timeout / 1000
         self.on_heartbeat_callback: Optional[Callable[[], None]] = None
         self.daemon: bool = True
         self.cancelled: Event = Event()
