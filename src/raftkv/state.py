@@ -6,7 +6,7 @@ from functools import partial
 from os import PathLike
 from typing import Any, Optional, Callable
 
-from raftkv.key_value_storage import KeyValueStorage
+from key_value.key_value_storage import KeyValueStorage
 
 
 class Role(enum.Enum):

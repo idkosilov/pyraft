@@ -1,7 +1,7 @@
 import cmd
 from os import PathLike
 
-from raftkv.key_value_storage import KeyValueStorage
+from key_value.key_value_storage import KeyValueStorage
 
 
 class RaftKeyValueStorageShell(cmd.Cmd):
