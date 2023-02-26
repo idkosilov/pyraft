@@ -7,12 +7,14 @@ class ElectionTimer:
     """
     Timer for managing elections in a distributed system.
 
-    :param election_timeout_lower: The lower bound for the election timeout.
-    :type election_timeout_lower: int
-    :param election_timeout_upper: The upper bound for the election timeout.
-    :type election_timeout_upper: int
     """
     def __init__(self, election_timeout_lower: int, election_timeout_upper: int) -> None:
+        """
+        Initialize an election timer
+
+        :param election_timeout_lower: the lower bound for the election timeout in milliseconds.
+        :param election_timeout_upper: the upper bound for the election timeout in milliseconds.
+        """
         super().__init__()
         self.election_timeout_lower: int = election_timeout_lower
         self.election_timeout_upper: int = election_timeout_upper
@@ -26,8 +28,7 @@ class ElectionTimer:
         Returns a random integer between the lower and upper bounds
         for the election timeout.
 
-        :return: A random integer.
-        :rtype: int
+        :return: a random election timeout in seconds.
         """
         return randint(self.election_timeout_lower, self.election_timeout_upper)
 
@@ -35,8 +36,7 @@ class ElectionTimer:
         """
         Sets the function to be called when an election timeout occurs.
 
-        :param on_election_timeout: The function to call.
-        :type on_election_timeout: Callable[[], None]
+        :param on_election_timeout: the function to call.
         """
         self.on_election_timeout = on_election_timeout
 
@@ -71,10 +71,13 @@ class HeartbeatTimer(Thread):
     """
     Timer for managing heartbeats in a distributed system.
 
-    :param heartbeat_timeout: The timeout for the heartbeat.
-    :type heartbeat_timeout: int
     """
     def __init__(self, heartbeat_timeout: int) -> None:
+        """
+        Initialize an election timer
+
+        :param heartbeat_timeout: the timeout for the heartbeat.
+        """
         super().__init__()
         self.heartbeat_timeout: int = heartbeat_timeout
         self.on_heartbeat_callback: Optional[Callable[[], None]] = None
