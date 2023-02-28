@@ -3,6 +3,7 @@ from typing import Callable, Optional, Any
 
 from raft.messages import Message, VoteRequest, VoteResponse, AppendEntriesRequest, AppendEntriesResponse
 from raft.state import AbstractState, Role, Entry
+from raft.timer import HeartbeatTimer, ElectionTimer
 
 
 class Node:
@@ -10,7 +11,12 @@ class Node:
     A class representing a node in a Raft cluster.
     """
 
-    def __init__(self, node_id: int, nodes_ids: set[int], state: AbstractState) -> None:
+    def __init__(self,
+                 node_id: int,
+                 nodes_ids: set[int],
+                 state: AbstractState,
+                 election_timer: ElectionTimer,
+                 heartbeat_timer: HeartbeatTimer) -> None:
         """
         Initializes a new instance of the Node class.
 
@@ -22,10 +28,16 @@ class Node:
         self.nodes_ids = nodes_ids
         self.state = state
 
+        self.election_timer = election_timer
+        self.election_timer.set_on_election_timeout(self.on_election_timeout_or_leader_fault)
+        self.election_timer.start()
+
+        self.heartbeat_timer = heartbeat_timer
+        self.heartbeat_timer.set_on_heartbeat_callback(self.on_heartbeat)
+        self.heartbeat_timer.start()
+
         self.send_message_callback: Optional[Callable[[int, Message], None]] = None
         self.deliver_changes_callback: Optional[Callable[[Any], None]] = None
-        self.cancel_election_timer_callback: Optional[Callable[[], None]] = None
-        self.start_election_timer_callback: Optional[Callable[[], None]] = None
 
     def on_election_timeout_or_leader_fault(self) -> None:
         """
@@ -44,10 +56,10 @@ class Node:
 
         recipients_vote_request = self.nodes_ids.difference((self.node_id,))
 
+        self.election_timer.cancel()
+
         for node_id in recipients_vote_request:
             self.send_message_callback(node_id, vote_request)
-
-        self.start_election_timer_callback()
 
     def on_vote_request(self, vote_request: VoteRequest) -> None:
         """
@@ -90,7 +102,7 @@ class Node:
             if len(self.state.votes_received) >= ceil((len(self.nodes_ids) + 1) / 2):
                 self.state.current_role = Role.LEADER
                 self.state.current_leader = self.node_id
-                self.cancel_election_timer_callback()
+                self.election_timer.cancel()
                 followers_ids = self.nodes_ids.difference((self.node_id,))
                 for follower_id in followers_ids:
                     self.state.next_index[follower_id] = len(self.state.log)
@@ -100,7 +112,7 @@ class Node:
             self.state.current_term = vote_response.term
             self.state.current_role = Role.FOLLOWER
             self.state.voted_for = None
-            self.cancel_election_timer_callback()
+            self.election_timer.cancel()
 
     def on_client_request(self, message: Any) -> None:
         """
@@ -138,7 +150,7 @@ class Node:
         if append_entries_request.term > self.state.current_term:
             self.state.current_term = append_entries_request.term
             self.state.voted_for = None
-            self.cancel_election_timer_callback()
+            self.election_timer.cancel()
 
         if append_entries_request.term == self.state.current_term:
             self.state.current_role = Role.FOLLOWER
@@ -186,7 +198,7 @@ class Node:
             self.state.current_term = append_entries_response.term
             self.state.current_role = Role.FOLLOWER
             self.state.voted_for = None
-            self.cancel_election_timer_callback()
+            self.election_timer.cancel()
 
     def replicate_log(self, follower_id: int) -> None:
         """

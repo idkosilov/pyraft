@@ -1,5 +1,6 @@
 import os
 from typing import Optional
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -77,7 +78,7 @@ def node():
 
     state = FakeState()
 
-    return Node(node_id, nodes, state)
+    return Node(node_id, nodes, state, MagicMock(), MagicMock())
 
 
 @pytest.fixture

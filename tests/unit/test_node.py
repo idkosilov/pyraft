@@ -14,7 +14,6 @@ def test_on_election_timeout_or_leader_fault(node):
     assert node.state.voted_for == node.node_id
     assert node.state.votes_received == {node.node_id, }
     assert node.send_message_callback.call_count == 4
-    assert node.start_election_timer_callback.call_count == 1
 
     expected_vote_request = VoteRequest(
         term=node.state.current_term,
@@ -197,7 +196,7 @@ def test_on_vote_response_node_become_a_leader_on_quorum_received_all_granted(no
     assert node.state.votes_received == {node.node_id, 2, 3}
     assert node.state.current_role == Role.LEADER
     assert node.state.current_leader == node.node_id
-    assert node.cancel_election_timer_callback.call_count == 1
+    assert node.election_timer.cancel.call_count == 1
     assert node.replicate_log.call_count == 4
 
     followers_ids = {2, 3, 4, 5}
@@ -241,7 +240,7 @@ def test_on_vote_response_on_higher_term_become_follower(node):
     assert node.state.current_term == vote_response_from_2.term
     assert node.state.current_role == Role.FOLLOWER
     assert node.state.voted_for is None
-    assert node.cancel_election_timer_callback.call_count == 1
+    assert node.election_timer.cancel.call_count == 1
 
 
 def test_on_client_request_leader_replicate_log(node):
@@ -453,7 +452,7 @@ def test_on_append_entries_request_on_candidate_with_less_term_become_follower_a
 
     assert node.state.current_term == 2
     assert node.state.current_role == Role.FOLLOWER
-    node.cancel_election_timer_callback.assert_called_once()
+    node.election_timer.cancel.assert_called_once()
     assert node.state.current_leader == 2
     assert node.state.voted_for is None
     node.append_entries.assert_called_once_with(append_entries_request.previous_log_index,
@@ -518,7 +517,7 @@ def test_on_append_entries_response_on_leader_with_lower_term(node):
     append_entries_response = AppendEntriesResponse(term=2, node_id=1, success=False)
     node.on_append_entries_response(append_entries_response)
 
-    assert node.cancel_election_timer_callback.call_count == 1
+    assert node.election_timer.cancel.call_count == 1
     assert node.state.current_term == 2
     assert node.state.current_role == Role.FOLLOWER
     assert node.state.voted_for is None
