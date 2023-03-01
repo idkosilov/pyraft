@@ -1,6 +1,6 @@
 from abc import ABC
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Any
 
 from raft.state import Entry
 
@@ -40,3 +40,8 @@ class AppendEntriesResponse(Message):
     node_id: int
     success: bool
     last_log_index: Optional[int] = None
+
+
+@dataclass
+class ClientRequest(Message):
+    message: Any
