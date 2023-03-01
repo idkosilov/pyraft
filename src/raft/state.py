@@ -145,7 +145,7 @@ class AbstractState(ABC):
         if len(self.log) > 0:
             return len(self.log) - 1
         else:
-            return 0
+            return -1
 
 
 class TrackedList(UserList):
