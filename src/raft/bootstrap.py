@@ -35,41 +35,40 @@ class RaftBootstrap:
         self.heartbeat_timer.start()
 
     def stop(self) -> None:
+        self.heartbeat_timer.stop()
+        self.election_timer.stop()
+        self.server.stop()
         self.state.close()
 
 
 if __name__ == "__main__":
-    bootstraps = []
-    for i in range(1, 4):
-        bootstrap = RaftBootstrap(
-            raft_configuration=RaftConfiguration(
-                node_id=i,
-                storage_path=f"state{i}",
-                heartbeat_timeout=100,
-                election_timeout_lower=300,
-                election_timeout_upper=600,
-                cluster=[
-                    ZmqNodeConfiguration(
-                        node_id=1,
-                        host="127.0.0.1",
-                        port=9999
-                    ),
-                    ZmqNodeConfiguration(
-                        node_id=2,
-                        host="127.0.0.1",
-                        port=9998
-                    ),
-                    ZmqNodeConfiguration(
-                        node_id=3,
-                        host="127.0.0.1",
-                        port=9997
-                    ),
-                ]
-            )
+    bootstrap = RaftBootstrap(
+        raft_configuration=RaftConfiguration(
+            node_id=1,
+            storage_path=f"state",
+            heartbeat_timeout=100,
+            election_timeout_lower=300,
+            election_timeout_upper=600,
+            cluster=[
+                ZmqNodeConfiguration(
+                    node_id=1,
+                    host="127.0.0.1",
+                    port=9999
+                ),
+                ZmqNodeConfiguration(
+                    node_id=2,
+                    host="127.0.0.1",
+                    port=9998
+                ),
+                ZmqNodeConfiguration(
+                    node_id=3,
+                    host="127.0.0.1",
+                    port=9997
+                ),
+            ]
         )
+    )
 
-        bootstrap.start()
-
-        bootstraps.append(bootstrap)
-
-    sleep(1000)
+    bootstrap.start()
+    sleep(10)
+    bootstrap.stop()

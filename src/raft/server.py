@@ -16,8 +16,10 @@ class Server:
         self.cluster = cluster
         self.context = zmq.Context()
         self.recv_socket = self.context.socket(zmq.REP)
-        self.send_sockets: dict[int, zmq.Socket] = {node.node_id: self.context.socket(zmq.REQ) for node in cluster}
-        self.send_queues: dict[int, Queue] = {node.node_id: Queue() for node in cluster}
+        self.send_sockets: dict[int, zmq.Socket] = {node.node_id: self.context.socket(zmq.REQ) for node in cluster
+                                                    if node.node_id != self.node.node_id}
+        self.send_queues: dict[int, Queue] = {node.node_id: Queue() for node in cluster
+                                              if node.node_id != self.node.node_id}
 
         self.workers: list[Thread] = []
         self.stopped = Event()
@@ -28,8 +30,11 @@ class Server:
         self.recv_socket.bind(node_config.url())
 
         while not self.stopped.is_set():
-            message: Message = self.recv_socket.recv_pyobj()
-            self.recv_socket.send_string("ok")
+            try:
+                message: Message = self.recv_socket.recv_pyobj()
+                self.recv_socket.send_string("ok")
+            except zmq.ContextTerminated:
+                break
 
             if isinstance(message, VoteRequest):
                 self.node.on_vote_request(message)
@@ -51,16 +56,20 @@ class Server:
         while not self.stopped.is_set():
             message: Optional[Message] = send_queue.get()
             if not isinstance(message, Message):
-                continue
-            send_socket.send_pyobj(message)
-            send_socket.recv_string()
+                break
+
+            try:
+                send_socket.send_pyobj(message)
+                send_socket.recv_string()
+            except zmq.ContextTerminated:
+                break
 
     def send_message_to(self, node_id: int, message: Message) -> None:
-        send_queue = self.send_queues[node_id]
-        send_queue.put(message)
+        self.send_queues[node_id].put(message)
 
     def start(self) -> None:
-        self.workers = [Thread(target=self.handle_send, args=(node, ), daemon=True) for node in self.cluster]
+        self.workers = [Thread(target=self.handle_send, args=(node,), daemon=True) for node in self.cluster
+                        if node.node_id != self.node.node_id]
         self.workers.append(Thread(target=self.handle_recv, daemon=True))
 
         for worker in self.workers:
@@ -72,12 +81,8 @@ class Server:
         for send_queue in self.send_queues.values():
             send_queue.put(None)
 
-        for send_socket in self.send_sockets.values():
-            send_socket.close()
-
-        self.recv_socket.close()
-
         self.context.destroy(linger=0)
 
         for worker in self.workers:
-            worker.join()
+            if worker.is_alive():
+                worker.join()
