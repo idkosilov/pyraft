@@ -1,107 +1,83 @@
 from queue import Queue
 from threading import Thread, Event
-from typing import Callable, Optional, Any
+from typing import Optional
 
 import zmq
 
-from raft.configuration import NodeConfiguration
+from raft.configuration import ZmqNodeConfiguration
+from raft.messages import Message, VoteRequest, VoteResponse, AppendEntriesRequest, AppendEntriesResponse, ClientRequest
+from raft.node import Node
 
 
 class Server:
 
-    def __init__(self, node_id: int, cluster: dict[int, NodeConfiguration]) -> None:
-        self.node_id = node_id
+    def __init__(self, node: Node, cluster: list[ZmqNodeConfiguration]) -> None:
+        self.node = node
         self.cluster = cluster
-        self.outgoing_messages_queue = Queue()
-
-        self.is_running_event = Event()
-
         self.context = zmq.Context()
-        self.incoming_socket = self.context.socket(zmq.REP)
-        self.outgoing_sockets = {
-            node_id: self.context.socket(zmq.REQ)
-            for node_id in self.cluster if node_id != self.node_id
-        }
+        self.recv_socket = self.context.socket(zmq.REP)
+        self.send_sockets: dict[int, zmq.Socket] = {node.node_id: self.context.socket(zmq.REQ) for node in cluster}
+        self.send_queues: dict[int, Queue] = {node.node_id: Queue() for node in cluster}
 
-        self.outgoing_queues = {
-            node_id: Queue() for node_id in self.cluster if node_id != self.node_id
-        }
+        self.workers: list[Thread] = []
+        self.stopped = Event()
 
-        self.incoming_messages_worker: Optional[Thread] = None
-        self.messages_dispatcher_worker: Optional[Thread] = None
-        self.outgoing_messages_workers: Optional[list[Thread]] = None
+    def handle_recv(self) -> None:
+        node_config = next(node for node in self.cluster if node.node_id == self.node.node_id)
 
-        self.deliver_to_node_callback: Optional[Callable[[Any], None]] = None
+        self.recv_socket.bind(node_config.url())
 
-    def handle_incoming_messages(self) -> None:
-        while self.is_running_event.is_set():
-            message = self.incoming_socket.recv_pyobj()
-            self.incoming_socket.send_string("ok")
-            self.deliver_to_node_callback(message)
+        while not self.stopped.is_set():
+            message: Message = self.recv_socket.recv_pyobj()
+            self.recv_socket.send_string("ok")
 
-    def handle_outgoing_messages(self) -> None:
-        while self.is_running_event.is_set():
-            node_id, message = self.outgoing_messages_queue.get()
-            outgoing_queue = self.outgoing_queues[node_id]
-            outgoing_queue.put(message)
+            if isinstance(message, VoteRequest):
+                self.node.on_vote_request(message)
+            elif isinstance(message, VoteResponse):
+                self.node.on_vote_response(message)
+            elif isinstance(message, AppendEntriesRequest):
+                self.node.on_append_entries_request(message)
+            elif isinstance(message, AppendEntriesResponse):
+                self.node.on_append_entries_response(message)
+            elif isinstance(message, ClientRequest):
+                self.node.on_client_request(message)
 
-    def send_outgoing_messages_to(self, node_id: int) -> None:
-        outgoing_socket = self.outgoing_sockets[node_id]
-        outgoing_socket.setsockopt(zmq.RCVTIMEO, 1000)
-        outgoing_queue = self.outgoing_queues[node_id]
-        outgoing_socket.connect(f"tcp://{self.cluster[node_id].host}:{self.cluster[node_id].port}")
+    def handle_send(self, node: ZmqNodeConfiguration) -> None:
+        send_socket = self.send_sockets[node.node_id]
+        send_queue = self.send_queues[node.node_id]
 
-        retries = 3
-        while self.is_running_event.is_set():
-            message = outgoing_queue.get()
-            for _ in range(retries):
-                try:
-                    outgoing_socket.send_pyobj(message)
-                    status = outgoing_socket.recv_string()
-                    break
-                except zmq.error.Again as e:
-                    print(f"No message received within 1 second: {e}")
-            else:
-                print(f"Failed to send message after {retries} retries")
+        send_socket.connect(node.url())
+
+        while not self.stopped.is_set():
+            message: Optional[Message] = send_queue.get()
+            if not isinstance(message, Message):
                 continue
+            send_socket.send_pyobj(message)
+            send_socket.recv_string()
+
+    def send_message_to(self, node_id: int, message: Message) -> None:
+        send_queue = self.send_queues[node_id]
+        send_queue.put(message)
 
     def start(self) -> None:
-        if self.is_running_event.is_set():
-            return
-        self.is_running_event.set()
+        self.workers = [Thread(target=self.handle_send, args=(node, ), daemon=True) for node in self.cluster]
+        self.workers.append(Thread(target=self.handle_recv, daemon=True))
 
-        self.incoming_messages_worker = Thread(target=self.handle_incoming_messages, daemon=True)
-        self.messages_dispatcher_worker = Thread(target=self.handle_incoming_messages, daemon=True)
-        self.outgoing_messages_workers = [
-            Thread(target=self.send_outgoing_messages_to, args=(node_id,), daemon=True)
-            for node_id in self.cluster.keys() if node_id != self.node_id
-        ]
-        self.incoming_messages_worker.start()
-        self.messages_dispatcher_worker.start()
-        for outgoing_messages_worker in self.outgoing_messages_workers:
-            outgoing_messages_worker.start()
+        for worker in self.workers:
+            worker.start()
 
     def stop(self) -> None:
-        if not self.is_running_event.is_set():
-            return
-        self.is_running_event.clear()
+        self.stopped.set()
 
-        self.incoming_socket.close()
-        for outgoing_socket in self.outgoing_sockets.values():
-            outgoing_socket.close()
+        for send_queue in self.send_queues.values():
+            send_queue.put(None)
 
-        self.messages_dispatcher_worker.join()
+        for send_socket in self.send_sockets.values():
+            send_socket.close()
 
-        if self.incoming_messages_worker is not None:
-            self.outgoing_messages_queue.put((None, None), block=False)
-            self.incoming_messages_worker.join()
+        self.recv_socket.close()
 
-        if self.outgoing_messages_workers is not None:
-            for node_id, _ in self.outgoing_queues.items():
-                self.outgoing_queues[node_id].put(None, block=False)
-            for outgoing_messages_worker in self.outgoing_messages_workers:
-                outgoing_messages_worker.join()
-            self.outgoing_messages_workers = None
+        self.context.destroy(linger=0)
 
-        self.incoming_messages_worker = None
-        self.messages_dispatcher_worker = None
+        for worker in self.workers:
+            worker.join()

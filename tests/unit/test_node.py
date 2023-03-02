@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, call
 
-from raft.messages import VoteRequest, VoteResponse, AppendEntriesRequest, AppendEntriesResponse
+from raft.messages import VoteRequest, VoteResponse, AppendEntriesRequest, AppendEntriesResponse, ClientRequest
 from raft.state import Role, Entry
 
 
@@ -249,7 +249,7 @@ def test_on_client_request_leader_replicate_log(node):
     node.state.current_term = 2
     node.state.match_index = {node.node_id: 0}
 
-    node.on_client_request("SET X 12")
+    node.on_client_request(ClientRequest("SET X 12"))
 
     expected_log = [Entry(term=2, message="SET X 12")]
 

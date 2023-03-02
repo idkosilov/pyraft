@@ -16,10 +16,11 @@ class ZmqNodeConfiguration(NodeConfiguration):
         return f"tcp://{self.host}:{self.port}"
 
 
+@dataclass
 class RaftConfiguration:
     node_id: int
     storage_path: str | PathLike
     heartbeat_timeout: int
     election_timeout_lower: int
     election_timeout_upper: int
-    cluster: set[NodeConfiguration]
+    cluster: list[NodeConfiguration]
