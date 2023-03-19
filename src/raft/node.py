@@ -128,13 +128,17 @@ class Node:
             # and the vote was granted, update the node's vote count and change role to leader
             # if a majority of nodes have voted for it.
             if len(self.state.votes_received) >= ceil((len(self.nodes_ids) + 1) / 2):
-                self.state.current_role = Role.LEADER
-                self.state.current_leader = self.node_id
                 self.election_timer.cancel()
+
                 followers_ids = self.nodes_ids.difference((self.node_id,))
                 for follower_id in followers_ids:
                     self.state.next_index[follower_id] = len(self.state.log)
                     self.state.match_index[follower_id] = 0
+
+                self.state.current_role = Role.LEADER
+                self.state.current_leader = self.node_id
+
+                for follower_id in followers_ids:
                     self.replicate_log(follower_id)
         elif vote_response.term > self.state.current_term:
             # If the received vote response is for a higher term than the node's current term,
