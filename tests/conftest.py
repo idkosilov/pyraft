@@ -3,8 +3,10 @@ from typing import Optional
 from unittest.mock import MagicMock
 
 import pytest
+import zmq
 
-from raft.message_bridge import MessageBridge
+from raft.bootstrap import RaftBootstrap
+from raft.configuration import RaftConfiguration, ZmqNodeConfiguration
 from raft.node import Node
 from raft.state import State, Entry, AbstractState
 from raft.timer import ElectionTimer, HeartbeatTimer
@@ -95,7 +97,96 @@ def heartbeat_timer():
 
 
 @pytest.fixture
-def message_bridge():
-    message_bridge = MessageBridge()
-    yield message_bridge
-    message_bridge.stop()
+def cluster_bootstraps():
+    cluster = [
+        RaftBootstrap(
+            raft_configuration=RaftConfiguration(
+                node_id=1,
+                storage_path=f"state1",
+                heartbeat_timeout=50,
+                election_timeout_lower=100,
+                election_timeout_upper=200,
+                cluster=[
+                    ZmqNodeConfiguration(
+                        node_id=1,
+                        host="127.0.0.1",
+                        port=9999
+                    ),
+                    ZmqNodeConfiguration(
+                        node_id=2,
+                        host="127.0.0.1",
+                        port=9998
+                    ),
+                    ZmqNodeConfiguration(
+                        node_id=3,
+                        host="127.0.0.1",
+                        port=9997
+                    ),
+                ]
+            )
+        ),
+        RaftBootstrap(
+            raft_configuration=RaftConfiguration(
+                node_id=2,
+                storage_path=f"state2",
+                heartbeat_timeout=50,
+                election_timeout_lower=100,
+                election_timeout_upper=200,
+                cluster=[
+                    ZmqNodeConfiguration(
+                        node_id=1,
+                        host="127.0.0.1",
+                        port=9999
+                    ),
+                    ZmqNodeConfiguration(
+                        node_id=2,
+                        host="127.0.0.1",
+                        port=9998
+                    ),
+                    ZmqNodeConfiguration(
+                        node_id=3,
+                        host="127.0.0.1",
+                        port=9997
+                    ),
+                ]
+            )
+        ),
+        RaftBootstrap(
+            raft_configuration=RaftConfiguration(
+                node_id=3,
+                storage_path=f"state3",
+                heartbeat_timeout=50,
+                election_timeout_lower=100,
+                election_timeout_upper=200,
+                cluster=[
+                    ZmqNodeConfiguration(
+                        node_id=1,
+                        host="127.0.0.1",
+                        port=9999
+                    ),
+                    ZmqNodeConfiguration(
+                        node_id=2,
+                        host="127.0.0.1",
+                        port=9998
+                    ),
+                    ZmqNodeConfiguration(
+                        node_id=3,
+                        host="127.0.0.1",
+                        port=9997
+                    ),
+                ]
+            )
+        ),
+    ]
+
+    for cluster_bootstrap in cluster:
+        cluster_bootstrap.start()
+
+    yield cluster
+
+    for cluster_bootstrap in cluster:
+        cluster_bootstrap.stop()
+
+    os.remove("state1.db")
+    os.remove("state2.db")
+    os.remove("state3.db")

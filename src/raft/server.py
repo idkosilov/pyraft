@@ -9,12 +9,15 @@ from raft.messages import Message, VoteRequest, VoteResponse, AppendEntriesReque
 from raft.node import Node
 
 
+context = zmq.Context()
+
+
 class Server:
 
     def __init__(self, node: Node, cluster: list[ZmqNodeConfiguration]) -> None:
         self.node = node
         self.cluster = cluster
-        self.context = zmq.Context()
+        self.context = zmq.Context.instance()
         self.recv_socket = self.context.socket(zmq.REP)
         self.send_sockets: dict[int, zmq.Socket] = {node.node_id: self.context.socket(zmq.REQ) for node in cluster
                                                     if node.node_id != self.node.node_id}
@@ -35,7 +38,7 @@ class Server:
             try:
                 message: Message = self.recv_socket.recv_pyobj()
                 self.recv_socket.send_string("ok")
-            except zmq.ContextTerminated:
+            except (zmq.ContextTerminated, zmq.ZMQError):
                 break
 
             if isinstance(message, VoteRequest):
@@ -63,7 +66,7 @@ class Server:
             try:
                 send_socket.send_pyobj(message)
                 send_socket.recv_string()
-            except zmq.ContextTerminated:
+            except (zmq.ContextTerminated, zmq.ZMQError):
                 break
 
     def send_message_to(self, node_id: int, message: Message) -> None:
@@ -83,8 +86,7 @@ class Server:
         for send_queue in self.send_queues.values():
             send_queue.put(None)
 
-        self.context.destroy(linger=0)
+        for send_socket in self.send_sockets.values():
+            send_socket.close()
 
-        for worker in self.workers:
-            if worker.is_alive():
-                worker.join()
+        self.recv_socket.close()
