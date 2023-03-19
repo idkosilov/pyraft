@@ -103,9 +103,9 @@ def cluster_bootstraps():
             raft_configuration=RaftConfiguration(
                 node_id=1,
                 storage_path=f"state1",
-                heartbeat_timeout=50,
-                election_timeout_lower=100,
-                election_timeout_upper=200,
+                heartbeat_timeout=100,
+                election_timeout_lower=500,
+                election_timeout_upper=1000,
                 cluster=[
                     ZmqNodeConfiguration(
                         node_id=1,
@@ -129,9 +129,9 @@ def cluster_bootstraps():
             raft_configuration=RaftConfiguration(
                 node_id=2,
                 storage_path=f"state2",
-                heartbeat_timeout=50,
-                election_timeout_lower=100,
-                election_timeout_upper=200,
+                heartbeat_timeout=100,
+                election_timeout_lower=500,
+                election_timeout_upper=1000,
                 cluster=[
                     ZmqNodeConfiguration(
                         node_id=1,
@@ -155,9 +155,9 @@ def cluster_bootstraps():
             raft_configuration=RaftConfiguration(
                 node_id=3,
                 storage_path=f"state3",
-                heartbeat_timeout=50,
-                election_timeout_lower=100,
-                election_timeout_upper=200,
+                heartbeat_timeout=100,
+                election_timeout_lower=500,
+                election_timeout_upper=1000,
                 cluster=[
                     ZmqNodeConfiguration(
                         node_id=1,
@@ -180,6 +180,7 @@ def cluster_bootstraps():
     ]
 
     for cluster_bootstrap in cluster:
+        cluster_bootstrap.node.set_deliver_changes_callback(MagicMock())
         cluster_bootstrap.start()
 
     yield cluster
@@ -190,3 +191,5 @@ def cluster_bootstraps():
     os.remove("state1.db")
     os.remove("state2.db")
     os.remove("state3.db")
+
+    zmq.Context.instance()

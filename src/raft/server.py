@@ -9,9 +9,6 @@ from raft.messages import Message, VoteRequest, VoteResponse, AppendEntriesReque
 from raft.node import Node
 
 
-context = zmq.Context()
-
-
 class Server:
 
     def __init__(self, node: Node, cluster: list[ZmqNodeConfiguration]) -> None:

@@ -34,7 +34,11 @@ class RaftBootstrap:
 
     def stop(self) -> None:
         self.heartbeat_timer.stop()
+        self.heartbeat_timer.join()
+
         self.election_timer.stop()
+        self.election_timer.join()
+
         self.server.stop()
         self.state.close()
 
