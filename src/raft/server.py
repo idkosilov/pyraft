@@ -24,6 +24,8 @@ class Server:
         self.workers: list[Thread] = []
         self.stopped = Event()
 
+        self.node.set_send_message_callback(self.send_message_to)
+
     def handle_recv(self) -> None:
         node_config = next(node for node in self.cluster if node.node_id == self.node.node_id)
 

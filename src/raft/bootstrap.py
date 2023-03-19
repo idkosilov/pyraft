@@ -26,8 +26,6 @@ class RaftBootstrap:
 
         self.server = Server(self.node, self.configuration.cluster)
 
-        self.node.set_send_message_callback(self.server.send_message_to)
-
     def start(self) -> None:
         self.state.open()
         self.server.start()
