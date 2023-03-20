@@ -33,22 +33,24 @@ class Server:
         self.is_running = False
 
     def publish(self, node_id: int, message: Message) -> None:
-        self.pub_socket.send_pyobj(message)
+        self.pub_socket.send_pyobj({"to": node_id, "message": message})
 
     def listen(self) -> None:
         while self.is_running:
-            message: Message = self.sub_socket.recv_pyobj()
+            message: dict = self.sub_socket.recv_pyobj()
 
-            if isinstance(message, VoteRequest):
-                self.node.on_vote_request(message)
-            elif isinstance(message, VoteResponse):
-                self.node.on_vote_response(message)
-            elif isinstance(message, AppendEntriesRequest):
-                self.node.on_append_entries_request(message)
-            elif isinstance(message, AppendEntriesResponse):
-                self.node.on_append_entries_response(message)
-            elif isinstance(message, ClientRequest):
-                self.node.on_client_request(message)
+            if message.get("to") == self.node.node_id:
+                message = message["message"]
+                if isinstance(message, VoteRequest):
+                    self.node.on_vote_request(message)
+                elif isinstance(message, VoteResponse):
+                    self.node.on_vote_response(message)
+                elif isinstance(message, AppendEntriesRequest):
+                    self.node.on_append_entries_request(message)
+                elif isinstance(message, AppendEntriesResponse):
+                    self.node.on_append_entries_response(message)
+                elif isinstance(message, ClientRequest):
+                    self.node.on_client_request(message)
 
     def start(self) -> None:
         self.is_running = True
